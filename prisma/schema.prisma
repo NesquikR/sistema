@@ -1,0 +1,1659 @@
+// ============================================================================
+// BeautyBot — Schema do banco de dados
+// PostgreSQL 16 + Prisma
+//
+// Documentação completa da modelagem: docs/DATABASE.md
+//
+// Convenções:
+//   · Entidades de catálogo  → id cuid,   updatedAt, soft delete (deletedAt)
+//   · Tabelas de evento      → id BigInt, append-only, sem updatedAt
+//   · Dinheiro               → Decimal(12,2) + coluna currency
+//   · Taxas / percentuais    → Decimal(5,4) ou Decimal(5,2)
+//   · Datas                  → Timestamptz(3), sempre em UTC
+//   · Nomes físicos          → snake_case via @map / @@map
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: a connection string vive em prisma.config.ts, não aqui.
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum ActorType {
+  SYSTEM
+  AI
+  USER
+  CONNECTOR
+}
+
+enum StoreStatus {
+  ACTIVE
+  DEGRADED
+  OFFLINE
+  PAUSED
+  DEPRECATED
+}
+
+enum IntegrationType {
+  OFFICIAL_API
+  AFFILIATE_API
+  SCRAPER
+  FEED
+  MANUAL
+}
+
+enum HealthStatus {
+  HEALTHY
+  DEGRADED
+  FAILING
+  UNKNOWN
+}
+
+enum TagKind {
+  ATTRIBUTE
+  CAMPAIGN
+  CURATION
+  RISK
+}
+
+enum TagSource {
+  MANUAL
+  AI
+  RULE
+  IMPORT
+}
+
+enum PriceSource {
+  SCHEDULED_SCAN
+  OFFER_DETECTION
+  MANUAL_CHECK
+  WEBHOOK
+  BACKFILL
+}
+
+enum Availability {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  PREORDER
+  UNKNOWN
+}
+
+enum OfferStatus {
+  DETECTED
+  VALIDATED
+  PENDING_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  REJECTED
+  EXPIRED
+  FAILED
+}
+
+enum DecisionSource {
+  RULE_ENGINE
+  AI
+  MANUAL
+  AUTO_THRESHOLD
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+  CASHBACK
+  PROGRESSIVE
+}
+
+enum AffiliateNetwork {
+  SHOPEE_AFFILIATE
+  AMAZON_ASSOCIATES
+  MERCADO_LIVRE
+  AWIN
+  RAKUTEN
+  LOMADEE
+  DIRECT
+  OTHER
+}
+
+enum DeviceType {
+  MOBILE
+  DESKTOP
+  TABLET
+  BOT
+  UNKNOWN
+}
+
+enum ConversionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+}
+
+enum MessageStatus {
+  DRAFT
+  QUEUED
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+  DELETED
+}
+
+enum ParseMode {
+  MARKDOWN_V2
+  HTML
+  PLAIN
+}
+
+enum AiPurpose {
+  OFFER_SCORING
+  COPYWRITING
+  CATEGORY_MAPPING
+  ANOMALY_DETECTION
+  SUGGESTION
+}
+
+enum AiVerdict {
+  APPROVE
+  REJECT
+  REVIEW
+}
+
+enum RejectionReason {
+  FAKE_DISCOUNT
+  BELOW_MIN_DISCOUNT
+  LOW_SELLER_REPUTATION
+  DUPLICATE_RECENT
+  INSUFFICIENT_MARGIN
+  BLOCKED_CATEGORY
+  BLOCKED_BRAND
+  OUT_OF_STOCK
+  PRICE_INCONSISTENT
+  LOW_ENGAGEMENT_FORECAST
+  OTHER
+}
+
+enum SuggestionType {
+  THRESHOLD_TUNING
+  SCHEDULE_OPTIMIZATION
+  CATEGORY_FOCUS
+  RISK_MITIGATION
+  CHANNEL_ROUTING
+  CONNECTOR_HEALTH
+}
+
+enum SuggestionStatus {
+  NEW
+  REVIEWING
+  APPLIED
+  DISMISSED
+  EXPIRED
+}
+
+enum JobType {
+  STORE_SYNC
+  PRICE_STATS
+  AI_EVALUATION
+  PUBLISH_QUEUE
+  ANALYTICS_ROLLUP
+  RETENTION_CLEANUP
+  COUPON_VERIFY
+  HEALTH_CHECK
+  CUSTOM
+}
+
+enum TriggerType {
+  CRON
+  MANUAL
+  API
+  RETRY
+  CHAIN
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  SKIPPED
+  FAILED
+}
+
+enum QueueStatus {
+  PENDING
+  RESERVED
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD
+}
+
+enum LogLevel {
+  TRACE
+  DEBUG
+  INFO
+  SUCCESS
+  WARN
+  ERROR
+  FATAL
+}
+
+enum Granularity {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+enum SettingScope {
+  GLOBAL
+  STORE
+  CATEGORY
+  CHANNEL
+  USER
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  SECRET
+  DURATION
+  PERCENT
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
+enum TaskType {
+  REVIEW_OFFER
+  VERIFY_COUPON
+  FIX_CONNECTOR
+  MAP_CATEGORY
+  REVIEW_SUGGESTION
+  MANUAL_CHECK
+  OTHER
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// DOMÍNIO: IDENTIDADE
+// Existe desde o dia 1 para dar alvo de FK a autoria e auditoria, mesmo com
+// um único operador e sem tela de login.
+// ============================================================================
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  role         UserRole  @default(OPERATOR)
+  passwordHash String?   @map("password_hash")
+  avatarUrl    String?   @map("avatar_url")
+  timezone     String    @default("America/Sao_Paulo")
+  locale       String    @default("pt-BR")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  apiKeys            ApiKey[]
+  auditLogs          AuditLog[]
+  aiFeedbacks        AiFeedback[]
+  appliedSuggestions AiSuggestion[]
+  tasks              Task[]
+  settingChanges     SettingHistory[]
+  settingsUpdated    Setting[]
+
+  @@index([isActive])
+  @@map("users")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  name       String
+  prefix     String
+  hashedKey  String    @unique @map("hashed_key")
+  scopes     String[]
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("api_keys")
+}
+
+/// Append-only. Nunca sofre UPDATE ou DELETE.
+model AuditLog {
+  id         BigInt    @id @default(autoincrement())
+  actorType  ActorType @default(SYSTEM) @map("actor_type")
+  actorId    String?   @map("actor_id")
+  action     String
+  entityType String    @map("entity_type")
+  entityId   String    @map("entity_id")
+  before     Json?     @db.JsonB
+  after      Json?     @db.JsonB
+  ipHash     String?   @map("ip_hash")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// DOMÍNIO: CATÁLOGO
+// ============================================================================
+
+model Store {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  legalName   String? @map("legal_name")
+  homepageUrl String? @map("homepage_url")
+  logoUrl     String? @map("logo_url")
+  accentColor String? @map("accent_color")
+
+  // Conector
+  connectorKey     String          @unique @map("connector_key")
+  connectorVersion String          @default("1.0.0") @map("connector_version")
+  integrationType  IntegrationType @default(SCRAPER) @map("integration_type")
+  baseUrl          String?         @map("base_url")
+  config           Json?           @db.JsonB
+
+  // Operação
+  status             StoreStatus @default(ACTIVE)
+  isActive           Boolean     @default(true) @map("is_active")
+  priority           Int         @default(100)
+  rateLimitPerMinute Int         @default(60) @map("rate_limit_per_minute")
+  quotaDailyLimit    Int?        @map("quota_daily_limit")
+  quotaDailyUsed     Int         @default(0) @map("quota_daily_used")
+  quotaResetAt       DateTime?   @map("quota_reset_at") @db.Timestamptz(3)
+
+  // Comercial
+  defaultCommissionRate Decimal @default(0.0000) @map("default_commission_rate") @db.Decimal(5, 4)
+  currency              String  @default("BRL")
+  timezone              String  @default("America/Sao_Paulo")
+
+  // Saúde — escrita a cada execução, lida constantemente pela Central
+  healthStatus        HealthStatus @default(UNKNOWN) @map("health_status")
+  lastSyncAt          DateTime?    @map("last_sync_at") @db.Timestamptz(3)
+  nextSyncAt          DateTime?    @map("next_sync_at") @db.Timestamptz(3)
+  lastSuccessAt       DateTime?    @map("last_success_at") @db.Timestamptz(3)
+  consecutiveFailures Int          @default(0) @map("consecutive_failures")
+  avgLatencyMs        Int?         @map("avg_latency_ms")
+  successRate         Decimal?     @map("success_rate") @db.Decimal(5, 2)
+
+  metadata  Json?     @db.JsonB
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  credentials       StoreCredential[]
+  categoryMaps      StoreCategoryMap[]
+  products          Product[]
+  offers            Offer[]
+  coupons           Coupon[]
+  affiliatePrograms AffiliateProgram[]
+  affiliateLinks    AffiliateLink[]
+  priceObservations PriceObservation[]
+  executions        Execution[]
+  schedulerJobs     SchedulerJob[]
+  conversions       Conversion[]
+  logs              Log[]
+  tasks             Task[]
+  dailyAnalytics    DailyAnalytics[]
+
+  @@index([isActive, nextSyncAt])
+  @@index([status])
+  @@map("stores")
+}
+
+/// Segredos versionados por loja. Nunca em texto plano.
+model StoreCredential {
+  id             String    @id @default(cuid())
+  storeId        String    @map("store_id")
+  key            String
+  valueEncrypted String    @map("value_encrypted")
+  version        Int       @default(1)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
+  rotatedAt      DateTime? @map("rotated_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key, version])
+  @@index([storeId, rotatedAt])
+  @@map("store_credentials")
+}
+
+/// Taxonomia interna, hierárquica, com materialized path.
+model Category {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  emoji       String?
+  accentColor String? @map("accent_color")
+  description String?
+
+  parentId  String? @map("parent_id")
+  path      String
+  depth     Int     @default(0)
+  sortOrder Int     @default(0) @map("sort_order")
+
+  minDiscountPercent Int     @default(30) @map("min_discount_percent")
+  maxDailyPosts      Int?    @map("max_daily_posts")
+  isActive           Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  parent         Category?          @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Category[]         @relation("CategoryTree")
+  products       Product[]
+  offers         Offer[]
+  storeMaps      StoreCategoryMap[]
+  channelLinks   ChannelCategory[]
+  tasks          Task[]
+  dailyAnalytics DailyAnalytics[]
+
+  @@index([parentId])
+  @@index([path])
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+/// Traduz a taxonomia externa de cada loja para a taxonomia interna.
+model StoreCategoryMap {
+  id                 String   @id @default(cuid())
+  storeId            String   @map("store_id")
+  categoryId         String   @map("category_id")
+  externalCategoryId String   @map("external_category_id")
+  externalPath       String?  @map("external_path")
+  confidence         Decimal  @default(1.0000) @db.Decimal(5, 4)
+  isVerified         Boolean  @default(false) @map("is_verified")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, externalCategoryId])
+  @@index([categoryId])
+  @@map("store_category_maps")
+}
+
+model Brand {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  normalizedName String    @unique @map("normalized_name")
+  logoUrl        String?   @map("logo_url")
+  websiteUrl     String?   @map("website_url")
+  isPremium      Boolean   @default(false) @map("is_premium")
+  isBlocked      Boolean   @default(false) @map("is_blocked")
+  blockReason    String?   @map("block_reason")
+  qualityScore   Int?      @map("quality_score")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  products      Product[]
+  productGroups ProductGroup[]
+  offers        Offer[]
+
+  @@index([isBlocked])
+  @@map("brands")
+}
+
+/// Agrupa o mesmo produto vendido em lojas diferentes.
+/// Habilita comparação de preço entre lojas.
+model ProductGroup {
+  id              String   @id @default(cuid())
+  canonicalTitle  String   @map("canonical_title")
+  normalizedTitle String   @map("normalized_title")
+  brandId         String?  @map("brand_id")
+  gtin            String?
+  matchConfidence Decimal  @default(1.0000) @map("match_confidence") @db.Decimal(5, 4)
+  matchStrategy   String?  @map("match_strategy")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  brand    Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  products Product[]
+
+  @@index([brandId, normalizedTitle])
+  @@index([gtin])
+  @@map("product_groups")
+}
+
+/// Um produto EM UMA LOJA. O mesmo item em duas lojas são duas linhas
+/// apontando para o mesmo ProductGroup.
+model Product {
+  id             String  @id @default(cuid())
+  storeId        String  @map("store_id")
+  externalId     String  @map("external_id")
+  productGroupId String? @map("product_group_id")
+  brandId        String? @map("brand_id")
+  categoryId     String? @map("category_id")
+
+  title           String
+  normalizedTitle String  @map("normalized_title")
+  slug            String?
+  description     String?
+  url             String
+  canonicalUrl    String? @map("canonical_url")
+
+  sku  String?
+  gtin String?
+  mpn  String?
+
+  sellerName       String?  @map("seller_name")
+  sellerId         String?  @map("seller_id")
+  sellerReputation Decimal? @map("seller_reputation") @db.Decimal(3, 2)
+
+  rating       Decimal? @db.Decimal(2, 1)
+  reviewCount  Int      @default(0) @map("review_count")
+  soldCount30d Int?     @map("sold_count_30d")
+
+  currency     String       @default("BRL")
+  currentPrice Decimal?     @map("current_price") @db.Decimal(12, 2)
+  listPrice    Decimal?     @map("list_price") @db.Decimal(12, 2)
+  availability Availability @default(UNKNOWN)
+
+  attributes  Json?   @db.JsonB
+  /// Hash dos campos relevantes: evita UPDATE quando nada mudou.
+  contentHash String? @map("content_hash")
+
+  isActive    Boolean   @default(true) @map("is_active")
+  isBlocked   Boolean   @default(false) @map("is_blocked")
+  firstSeenAt DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productGroup      ProductGroup?      @relation(fields: [productGroupId], references: [id], onDelete: SetNull)
+  brand             Brand?             @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  category          Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images            ProductImage[]
+  tags              ProductTag[]
+  priceObservations PriceObservation[]
+  priceStatistics   PriceStatistic[]
+  offers            Offer[]
+  affiliateLinks    AffiliateLink[]
+
+  @@unique([storeId, externalId])
+  @@index([storeId, lastSeenAt])
+  @@index([categoryId, isActive])
+  @@index([brandId])
+  @@index([productGroupId])
+  @@index([normalizedTitle])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  url       String
+  localPath String?  @map("local_path")
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  width     Int?
+  height    Int?
+  checksum  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, position])
+  @@index([productId, isPrimary])
+  @@map("product_images")
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  kind        TagKind  @default(ATTRIBUTE)
+  color       String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  products ProductTag[]
+
+  @@index([kind])
+  @@map("tags")
+}
+
+/// Junção explícita: carrega origem da marcação (humano x IA x regra).
+model ProductTag {
+  productId  String    @map("product_id")
+  tagId      String    @map("tag_id")
+  source     TagSource @default(MANUAL)
+  confidence Decimal?  @db.Decimal(5, 4)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+  @@map("product_tags")
+}
+
+// ============================================================================
+// DOMÍNIO: PRECIFICAÇÃO
+// Fonte da verdade sobre o que é desconto real.
+// ============================================================================
+
+/// Append-only. Gravada apenas quando o preço muda (+ heartbeat diário).
+/// Candidata a PARTITION BY RANGE (observed_at) mensal.
+model PriceObservation {
+  id          BigInt  @id @default(autoincrement())
+  productId   String  @map("product_id")
+  storeId     String  @map("store_id")
+  executionId String? @map("execution_id")
+
+  price        Decimal  @db.Decimal(12, 2)
+  listPrice    Decimal? @map("list_price") @db.Decimal(12, 2)
+  shippingCost Decimal? @map("shipping_cost") @db.Decimal(12, 2)
+  currency     String   @default("BRL")
+
+  availability Availability @default(UNKNOWN)
+  inStock      Boolean      @default(true) @map("in_stock")
+  source       PriceSource  @default(SCHEDULED_SCAN)
+  observedAt   DateTime     @default(now()) @map("observed_at") @db.Timestamptz(3)
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  execution Execution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+
+  @@index([productId, observedAt(sort: Desc)])
+  @@index([observedAt])
+  @@index([storeId, observedAt])
+  @@map("price_observations")
+}
+
+/// Rollup recalculado por janela. Mediana e p25 são o que resiste a outlier —
+/// e outlier é exatamente do que a promoção falsa é feita.
+model PriceStatistic {
+  id         String @id @default(cuid())
+  productId  String @map("product_id")
+  windowDays Int    @map("window_days")
+
+  minPrice     Decimal  @map("min_price") @db.Decimal(12, 2)
+  maxPrice     Decimal  @map("max_price") @db.Decimal(12, 2)
+  avgPrice     Decimal  @map("avg_price") @db.Decimal(12, 2)
+  medianPrice  Decimal  @map("median_price") @db.Decimal(12, 2)
+  p25Price     Decimal  @map("p25_price") @db.Decimal(12, 2)
+  stdDeviation Decimal? @map("std_deviation") @db.Decimal(12, 4)
+  sampleCount  Int      @map("sample_count")
+
+  minPriceAt DateTime? @map("min_price_at") @db.Timestamptz(3)
+  computedAt DateTime  @default(now()) @map("computed_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, windowDays])
+  @@index([computedAt])
+  @@map("price_statistics")
+}
+
+// ============================================================================
+// DOMÍNIO: OFERTAS
+// Product = o que existe · PriceObservation = o que foi visto
+// Offer    = o que vale a pena contar a alguém
+// ============================================================================
+
+model Offer {
+  id              String  @id @default(cuid())
+  productId       String  @map("product_id")
+  storeId         String  @map("store_id")
+  categoryId      String? @map("category_id")
+  brandId         String? @map("brand_id")
+  couponId        String? @map("coupon_id")
+  executionId     String? @map("execution_id")
+  affiliateLinkId String? @map("affiliate_link_id")
+
+  // Snapshot do momento da detecção — uma oferta é um fato histórico
+  title           String
+  imageUrl        String?  @map("image_url")
+  price           Decimal  @db.Decimal(12, 2)
+  previousPrice   Decimal  @map("previous_price") @db.Decimal(12, 2)
+  referencePrice  Decimal? @map("reference_price") @db.Decimal(12, 2)
+  lowestEverPrice Decimal? @map("lowest_ever_price") @db.Decimal(12, 2)
+  discountPercent Decimal  @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount  Decimal  @map("discount_amount") @db.Decimal(12, 2)
+  belowAveragePct Decimal? @map("below_average_pct") @db.Decimal(5, 2)
+  currency        String   @default("BRL")
+
+  freeShipping  Boolean      @default(false) @map("free_shipping")
+  shippingCost  Decimal?     @map("shipping_cost") @db.Decimal(12, 2)
+  availability  Availability @default(UNKNOWN)
+  stockEstimate Int?         @map("stock_estimate")
+  rating        Decimal?     @db.Decimal(2, 1)
+  reviewCount   Int?         @map("review_count")
+
+  score           Int?
+  status          OfferStatus      @default(DETECTED)
+  decisionSource  DecisionSource?  @map("decision_source")
+  rejectionReason RejectionReason? @map("rejection_reason")
+  rejectionNote   String?          @map("rejection_note")
+
+  /// sha256(productId | preço | dia) — o banco garante a deduplicação,
+  /// inclusive sob execuções concorrentes.
+  dedupeKey String @unique @map("dedupe_key")
+
+  detectedAt   DateTime  @default(now()) @map("detected_at") @db.Timestamptz(3)
+  validatedAt  DateTime? @map("validated_at") @db.Timestamptz(3)
+  approvedAt   DateTime? @map("approved_at") @db.Timestamptz(3)
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(3)
+  publishedAt  DateTime? @map("published_at") @db.Timestamptz(3)
+  rejectedAt   DateTime? @map("rejected_at") @db.Timestamptz(3)
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(3)
+
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand         Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  coupon        Coupon?        @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  execution     Execution?     @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  affiliateLink AffiliateLink? @relation("OfferPrimaryLink", fields: [affiliateLinkId], references: [id], onDelete: SetNull)
+
+  priceHistory   OfferPrice[]
+  statusEvents   OfferStatusEvent[]
+  aiAnalyses     AiAnalysis[]
+  messages       TelegramMessage[]
+  clicks         Click[]
+  conversions    Conversion[]
+  generatedLinks AffiliateLink[]    @relation("LinkOffer")
+  logs           Log[]
+  tasks          Task[]
+
+  @@index([status, detectedAt(sort: Desc)])
+  @@index([productId, detectedAt(sort: Desc)])
+  @@index([categoryId, status])
+  @@index([storeId, status])
+  @@index([score(sort: Desc)])
+  @@index([scheduledFor])
+  @@map("offers")
+}
+
+/// O preço pode mudar enquanto a oferta está viva. Append-only.
+/// É o que permite cancelar um agendamento cuja promoção já acabou.
+model OfferPrice {
+  id              BigInt       @id @default(autoincrement())
+  offerId         String       @map("offer_id")
+  price           Decimal      @db.Decimal(12, 2)
+  listPrice       Decimal?     @map("list_price") @db.Decimal(12, 2)
+  discountPercent Decimal?     @map("discount_percent") @db.Decimal(5, 2)
+  availability    Availability @default(UNKNOWN)
+  capturedAt      DateTime     @default(now()) @map("captured_at") @db.Timestamptz(3)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, capturedAt(sort: Desc)])
+  @@map("offer_prices")
+}
+
+/// Auditoria completa do ciclo de vida. Append-only.
+/// Daqui sai o tempo entre detecção e publicação.
+model OfferStatusEvent {
+  id         BigInt       @id @default(autoincrement())
+  offerId    String       @map("offer_id")
+  fromStatus OfferStatus? @map("from_status")
+  toStatus   OfferStatus  @map("to_status")
+  reason     String?
+  actorType  ActorType    @default(SYSTEM) @map("actor_type")
+  actorId    String?      @map("actor_id")
+  metadata   Json?        @db.JsonB
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, createdAt])
+  @@index([toStatus, createdAt])
+  @@map("offer_status_events")
+}
+
+model Coupon {
+  id          String     @id @default(cuid())
+  storeId     String     @map("store_id")
+  code        String
+  description String?
+  type        CouponType @default(PERCENT)
+  value       Decimal    @db.Decimal(12, 2)
+  maxDiscount Decimal?   @map("max_discount") @db.Decimal(12, 2)
+  minPurchase Decimal?   @map("min_purchase") @db.Decimal(12, 2)
+  currency    String     @default("BRL")
+
+  startsAt        DateTime? @map("starts_at") @db.Timestamptz(3)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(3)
+  usageLimit      Int?      @map("usage_limit")
+  usageCount      Int       @default(0) @map("usage_count")
+  isFirstPurchase Boolean   @default(false) @map("is_first_purchase")
+
+  isActive       Boolean   @default(true) @map("is_active")
+  isVerified     Boolean   @default(false) @map("is_verified")
+  lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(3)
+  sourceUrl      String?   @map("source_url")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  offers Offer[]
+  tasks  Task[]
+
+  @@unique([storeId, code])
+  @@index([storeId, isActive, expiresAt])
+  @@map("coupons")
+}
+
+// ============================================================================
+// DOMÍNIO: MONETIZAÇÃO
+// ============================================================================
+
+model AffiliateProgram {
+  id              String           @id @default(cuid())
+  storeId         String           @map("store_id")
+  name            String
+  network         AffiliateNetwork @default(DIRECT)
+  trackingTag     String?          @map("tracking_tag")
+  commissionRate  Decimal          @default(0.0000) @map("commission_rate") @db.Decimal(5, 4)
+  cookieDays      Int              @default(30) @map("cookie_days")
+  paymentTermDays Int              @default(60) @map("payment_term_days")
+  isActive        Boolean          @default(true) @map("is_active")
+  config          Json?            @db.JsonB
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  store Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  links AffiliateLink[]
+
+  @@unique([storeId, network])
+  @@map("affiliate_programs")
+}
+
+/// Redirecionador próprio: cliques rastreáveis mesmo sem retorno da rede,
+/// e destino corrigível depois da publicação.
+model AffiliateLink {
+  id        String  @id @default(cuid())
+  storeId   String  @map("store_id")
+  programId String? @map("program_id")
+  productId String? @map("product_id")
+  offerId   String? @map("offer_id")
+
+  originalUrl String  @map("original_url")
+  targetUrl   String  @map("target_url")
+  shortSlug   String  @unique @map("short_slug")
+  trackingTag String? @map("tracking_tag")
+
+  clickCount      Int     @default(0) @map("click_count")
+  conversionCount Int     @default(0) @map("conversion_count")
+  revenue         Decimal @default(0) @db.Decimal(12, 2)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  store   Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  program AffiliateProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  product Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  offer   Offer?            @relation("LinkOffer", fields: [offerId], references: [id], onDelete: SetNull)
+
+  primaryForOffers Offer[]           @relation("OfferPrimaryLink")
+  clicks           Click[]
+  conversions      Conversion[]
+  messages         TelegramMessage[]
+
+  @@index([offerId])
+  @@index([storeId, createdAt])
+  @@index([productId])
+  @@map("affiliate_links")
+}
+
+/// Append-only. ipHash (nunca IP em claro) atende LGPD sem perder unicidade.
+model Click {
+  id              BigInt  @id @default(autoincrement())
+  affiliateLinkId String  @map("affiliate_link_id")
+  offerId         String? @map("offer_id")
+  messageId       String? @map("message_id")
+  channelId       String? @map("channel_id")
+
+  ipHash    String?    @map("ip_hash")
+  userAgent String?    @map("user_agent")
+  device    DeviceType @default(UNKNOWN)
+  country   String?
+  region    String?
+  referrer  String?
+  isBot     Boolean    @default(false) @map("is_bot")
+  isUnique  Boolean    @default(true) @map("is_unique")
+
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  affiliateLink AffiliateLink    @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+  offer         Offer?           @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  message       TelegramMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  channel       TelegramChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  conversions   Conversion[]
+
+  @@index([affiliateLinkId, occurredAt])
+  @@index([messageId, occurredAt])
+  @@index([occurredAt])
+  @@map("clicks")
+}
+
+/// Única tabela de evento mutável do sistema: comissão só é definitiva
+/// depois do prazo de devolução da loja.
+model Conversion {
+  id              BigInt  @id @default(autoincrement())
+  storeId         String  @map("store_id")
+  affiliateLinkId String  @map("affiliate_link_id")
+  clickId         BigInt? @map("click_id")
+  offerId         String? @map("offer_id")
+
+  externalOrderId String           @map("external_order_id")
+  status          ConversionStatus @default(PENDING)
+  orderValue      Decimal          @map("order_value") @db.Decimal(12, 2)
+  commission      Decimal          @db.Decimal(12, 2)
+  commissionRate  Decimal?         @map("commission_rate") @db.Decimal(5, 4)
+  currency        String           @default("BRL")
+  quantity        Int              @default(1)
+
+  occurredAt  DateTime  @map("occurred_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  rawPayload  Json?     @map("raw_payload") @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  store         Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  affiliateLink AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+  click         Click?        @relation(fields: [clickId], references: [id], onDelete: SetNull)
+  offer         Offer?        @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, externalOrderId])
+  @@index([status, occurredAt])
+  @@index([affiliateLinkId, occurredAt])
+  @@index([offerId])
+  @@map("conversions")
+}
+
+// ============================================================================
+// DOMÍNIO: PUBLICAÇÃO
+// ============================================================================
+
+model TelegramChannel {
+  id          String  @id @default(cuid())
+  chatId      BigInt  @unique @map("chat_id")
+  handle      String  @unique
+  title       String
+  description String?
+  inviteUrl   String? @map("invite_url")
+  memberCount Int     @default(0) @map("member_count")
+  language    String  @default("pt-BR")
+
+  isActive          Boolean @default(true) @map("is_active")
+  isPrimary         Boolean @default(false) @map("is_primary")
+  defaultTemplateId String? @map("default_template_id")
+
+  // Regras de negócio no banco: mudam sem deploy
+  postingWindowStart String @default("08:00") @map("posting_window_start")
+  postingWindowEnd   String @default("22:00") @map("posting_window_end")
+  maxPostsPerHour    Int    @default(6) @map("max_posts_per_hour")
+  maxPostsPerDay     Int    @default(60) @map("max_posts_per_day")
+  minScoreToPublish  Int    @default(70) @map("min_score_to_publish")
+
+  memberCountSyncedAt DateTime? @map("member_count_synced_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  defaultTemplate MessageTemplate?  @relation("ChannelDefaultTemplate", fields: [defaultTemplateId], references: [id], onDelete: SetNull)
+  categories      ChannelCategory[]
+  messages        TelegramMessage[]
+  clicks          Click[]
+  dailyAnalytics  DailyAnalytics[]
+
+  @@index([isActive])
+  @@map("telegram_channels")
+}
+
+/// Roteamento: qual categoria vai para qual canal, com peso de prioridade.
+model ChannelCategory {
+  channelId  String   @map("channel_id")
+  categoryId String   @map("category_id")
+  weight     Int      @default(100)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  channel  TelegramChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  category Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, categoryId])
+  @@index([categoryId])
+  @@map("channel_categories")
+}
+
+/// Imutável por versão: editar cria version + 1.
+/// Uma mensagem antiga sempre aponta para o template exato que a gerou.
+model MessageTemplate {
+  id        String    @id @default(cuid())
+  slug      String
+  version   Int       @default(1)
+  name      String
+  body      String
+  parseMode ParseMode @default(MARKDOWN_V2) @map("parse_mode")
+  variables Json?     @db.JsonB
+  isDefault Boolean   @default(false) @map("is_default")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  messages           TelegramMessage[]
+  defaultForChannels TelegramChannel[] @relation("ChannelDefaultTemplate")
+
+  @@unique([slug, version])
+  @@index([isActive])
+  @@map("message_templates")
+}
+
+model TelegramMessage {
+  id              String  @id @default(cuid())
+  offerId         String? @map("offer_id")
+  channelId       String  @map("channel_id")
+  templateId      String? @map("template_id")
+  affiliateLinkId String? @map("affiliate_link_id")
+
+  externalMessageId BigInt?   @map("external_message_id")
+  /// Snapshot do texto final entregue — fiel ao que o público viu.
+  renderedText      String    @map("rendered_text")
+  mediaUrl          String?   @map("media_url")
+  parseMode         ParseMode @default(MARKDOWN_V2) @map("parse_mode")
+
+  status        MessageStatus @default(DRAFT)
+  priority      Priority      @default(NORMAL)
+  attempts      Int           @default(0)
+  failureReason String?       @map("failure_reason")
+
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(3)
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz(3)
+  editedAt     DateTime? @map("edited_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  // Contadores desnormalizados — reconstruíveis a partir de clicks/conversions
+  clickCount      Int     @default(0) @map("click_count")
+  conversionCount Int     @default(0) @map("conversion_count")
+  revenue         Decimal @default(0) @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  offer         Offer?           @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  channel       TelegramChannel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  template      MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  affiliateLink AffiliateLink?   @relation(fields: [affiliateLinkId], references: [id], onDelete: SetNull)
+  deliveries    MessageAttempt[]
+  clicks        Click[]
+
+  @@unique([channelId, externalMessageId])
+  @@index([status, scheduledFor])
+  @@index([channelId, sentAt(sort: Desc)])
+  @@index([offerId])
+  @@map("telegram_messages")
+}
+
+/// Append-only. Retry com backoff sem perder o rastro das falhas —
+/// 429 do Telegram é rotina, não exceção.
+model MessageAttempt {
+  id         BigInt   @id @default(autoincrement())
+  messageId  String   @map("message_id")
+  attemptNo  Int      @map("attempt_no")
+  success    Boolean  @default(false)
+  httpStatus Int?     @map("http_status")
+  errorCode  String?  @map("error_code")
+  errorText  String?  @map("error_text")
+  latencyMs  Int?     @map("latency_ms")
+  retryAfter Int?     @map("retry_after")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  message TelegramMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, attemptNo])
+  @@index([createdAt])
+  @@map("message_attempts")
+}
+
+// ============================================================================
+// DOMÍNIO: INTELIGÊNCIA
+// ============================================================================
+
+model AiModel {
+  id              String    @id @default(cuid())
+  key             String    @unique
+  provider        String
+  modelId         String    @map("model_id")
+  version         String    @default("1")
+  purpose         AiPurpose @default(OFFER_SCORING)
+  isActive        Boolean   @default(false) @map("is_active")
+  config          Json?     @db.JsonB
+  costPer1kInput  Decimal?  @map("cost_per_1k_input") @db.Decimal(10, 6)
+  costPer1kOutput Decimal?  @map("cost_per_1k_output") @db.Decimal(10, 6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  prompts  AiPrompt[]
+  analyses AiAnalysis[]
+
+  @@index([purpose, isActive])
+  @@map("ai_models")
+}
+
+model AiPrompt {
+  id        String    @id @default(cuid())
+  modelId   String?   @map("model_id")
+  key       String
+  version   Int       @default(1)
+  purpose   AiPurpose @default(OFFER_SCORING)
+  template  String
+  variables Json?     @db.JsonB
+  isActive  Boolean   @default(false) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  model    AiModel?     @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  analyses AiAnalysis[]
+
+  @@unique([key, version])
+  @@index([isActive])
+  @@map("ai_prompts")
+}
+
+/// Append-only: reavaliar cria nova análise, nunca sobrescreve.
+model AiAnalysis {
+  id       String  @id @default(cuid())
+  offerId  String  @map("offer_id")
+  modelId  String  @map("model_id")
+  promptId String? @map("prompt_id")
+
+  score           Int
+  verdict         AiVerdict
+  confidence      Decimal?         @db.Decimal(5, 4)
+  rejectionReason RejectionReason? @map("rejection_reason")
+  reasons         String[]
+  summary         String?
+
+  inputTokens  Int?     @map("input_tokens")
+  outputTokens Int?     @map("output_tokens")
+  costUsd      Decimal? @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs    Int?     @map("latency_ms")
+
+  features    Json?    @db.JsonB
+  rawResponse Json?    @map("raw_response") @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  offer    Offer        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  model    AiModel      @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  prompt   AiPrompt?    @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  feedback AiFeedback[]
+
+  @@index([offerId, createdAt(sort: Desc)])
+  @@index([modelId, createdAt])
+  @@index([verdict, createdAt])
+  @@index([rejectionReason])
+  @@map("ai_analyses")
+}
+
+/// O dado mais valioso do sistema a longo prazo: cada decisão humana sobre
+/// uma previsão da IA vira um par (previsão, verdade).
+model AiFeedback {
+  id           String    @id @default(cuid())
+  analysisId   String    @map("analysis_id")
+  userId       String?   @map("user_id")
+  humanVerdict AiVerdict @map("human_verdict")
+  agreed       Boolean
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  analysis AiAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user     User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([analysisId])
+  @@index([agreed, createdAt])
+  @@map("ai_feedbacks")
+}
+
+model AiSuggestion {
+  id              String           @id @default(cuid())
+  type            SuggestionType
+  title           String
+  detail          String
+  impactEstimate  String?          @map("impact_estimate")
+  impactScore     Int?             @map("impact_score")
+  /// Descreve a mudança de forma estruturada — "Aplicar" é executável.
+  payload         Json?            @db.JsonB
+  status          SuggestionStatus @default(NEW)
+  appliedByUserId String?          @map("applied_by_user_id")
+  appliedAt       DateTime?        @map("applied_at") @db.Timestamptz(3)
+  dismissedReason String?          @map("dismissed_reason")
+  expiresAt       DateTime?        @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  appliedBy User?  @relation(fields: [appliedByUserId], references: [id], onDelete: SetNull)
+  tasks     Task[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([type])
+  @@map("ai_suggestions")
+}
+
+// ============================================================================
+// DOMÍNIO: ORQUESTRAÇÃO
+// ============================================================================
+
+model SchedulerJob {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  description String?
+  jobType     JobType @default(CUSTOM) @map("job_type")
+  storeId     String? @map("store_id")
+
+  cronExpression   String  @map("cron_expression")
+  timezone         String  @default("America/Sao_Paulo")
+  isEnabled        Boolean @default(true) @map("is_enabled")
+  concurrencyLimit Int     @default(1) @map("concurrency_limit")
+  timeoutSeconds   Int     @default(300) @map("timeout_seconds")
+  maxRetries       Int     @default(3) @map("max_retries")
+  backoffStrategy  String  @default("exponential") @map("backoff_strategy")
+  payload          Json?   @db.JsonB
+
+  lastRunAt    DateTime?        @map("last_run_at") @db.Timestamptz(3)
+  nextRunAt    DateTime?        @map("next_run_at") @db.Timestamptz(3)
+  lastStatus   ExecutionStatus? @map("last_status")
+  runCount     Int              @default(0) @map("run_count")
+  failureCount Int              @default(0) @map("failure_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  store      Store?      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  executions Execution[]
+
+  @@index([isEnabled, nextRunAt])
+  @@index([jobType])
+  @@map("scheduler_jobs")
+}
+
+model Execution {
+  id                String  @id @default(cuid())
+  jobId             String? @map("job_id")
+  storeId           String? @map("store_id")
+  parentExecutionId String? @map("parent_execution_id")
+
+  trigger TriggerType     @default(CRON)
+  status  ExecutionStatus @default(PENDING)
+  attempt Int             @default(1)
+
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+  durationMs Int?      @map("duration_ms")
+
+  itemsScanned    Int     @default(0) @map("items_scanned")
+  itemsNew        Int     @default(0) @map("items_new")
+  itemsUpdated    Int     @default(0) @map("items_updated")
+  itemsSkipped    Int     @default(0) @map("items_skipped")
+  offersCreated   Int     @default(0) @map("offers_created")
+  offersPublished Int     @default(0) @map("offers_published")
+  errorCount      Int     @default(0) @map("error_count")
+  errorMessage    String? @map("error_message")
+
+  correlationId String? @map("correlation_id")
+  stats         Json?   @db.JsonB
+
+  job               SchedulerJob?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  store             Store?             @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  parent            Execution?         @relation("ExecutionTree", fields: [parentExecutionId], references: [id], onDelete: SetNull)
+  children          Execution[]        @relation("ExecutionTree")
+  steps             ExecutionStep[]
+  offers            Offer[]
+  priceObservations PriceObservation[]
+  logs              Log[]
+
+  @@index([jobId, startedAt(sort: Desc)])
+  @@index([storeId, startedAt(sort: Desc)])
+  @@index([status, startedAt])
+  @@index([correlationId])
+  @@map("executions")
+}
+
+/// Transforma "a execução demorou 8 s" em "a paginação demorou 6,2 s dos 8 s".
+model ExecutionStep {
+  id          String     @id @default(cuid())
+  executionId String     @map("execution_id")
+  sequence    Int
+  name        String
+  status      StepStatus @default(PENDING)
+  startedAt   DateTime   @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt  DateTime?  @map("finished_at") @db.Timestamptz(3)
+  durationMs  Int?       @map("duration_ms")
+  input       Json?      @db.JsonB
+  output      Json?      @db.JsonB
+  errorText   String?    @map("error_text")
+
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, sequence])
+  @@index([status])
+  @@map("execution_steps")
+}
+
+/// Fila durável no próprio Postgres: SELECT ... FOR UPDATE SKIP LOCKED.
+/// O job fica na MESMA transação que a mudança de dados — "gravei a oferta
+/// mas perdi o job de publicar" deixa de ser possível.
+model QueueJob {
+  id          BigInt      @id @default(autoincrement())
+  queue       String      @default("default")
+  name        String
+  payload     Json        @db.JsonB
+  status      QueueStatus @default(PENDING)
+  priority    Int         @default(100)
+  attempts    Int         @default(0)
+  maxAttempts Int         @default(3) @map("max_attempts")
+
+  availableAt DateTime  @default(now()) @map("available_at") @db.Timestamptz(3)
+  lockedAt    DateTime? @map("locked_at") @db.Timestamptz(3)
+  lockedBy    String?   @map("locked_by")
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz(3)
+  errorText   String?   @map("error_text")
+
+  dedupeKey String?  @unique @map("dedupe_key")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([queue, status, availableAt, priority])
+  @@index([status, lockedAt])
+  @@map("queue_jobs")
+}
+
+// ============================================================================
+// DOMÍNIO: OBSERVABILIDADE E CONFIGURAÇÃO
+// ============================================================================
+
+/// Append-only, particionável por mês.
+/// correlationId amarra todos os eventos de uma mesma execução.
+model Log {
+  id      BigInt   @id @default(autoincrement())
+  level   LogLevel @default(INFO)
+  source  String
+  message String
+  context Json?    @db.JsonB
+
+  executionId   String? @map("execution_id")
+  storeId       String? @map("store_id")
+  offerId       String? @map("offer_id")
+  correlationId String? @map("correlation_id")
+
+  durationMs Int?     @map("duration_ms")
+  errorStack String?  @map("error_stack")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  execution Execution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  store     Store?     @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  offer     Offer?     @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([level, createdAt(sort: Desc)])
+  @@index([source, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@index([executionId])
+  @@map("logs")
+}
+
+/// Série temporal genérica: adicionar métrica nunca deve exigir migration.
+/// dimensionsHash existe porque o Postgres não indexa jsonb em unique prático.
+model MetricSample {
+  id             BigInt      @id @default(autoincrement())
+  name           String
+  value          Decimal     @db.Decimal(18, 6)
+  unit           String?
+  granularity    Granularity @default(HOUR)
+  bucketStart    DateTime    @map("bucket_start") @db.Timestamptz(3)
+  sampleCount    Int         @default(1) @map("sample_count")
+  dimensions     Json?       @db.JsonB
+  dimensionsHash String      @default("") @map("dimensions_hash")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([name, granularity, bucketStart, dimensionsHash])
+  @@index([name, bucketStart(sort: Desc)])
+  @@index([bucketStart])
+  @@map("metric_samples")
+}
+
+/// Rollup diário de negócio. A tela de Analytics precisa de 30 dias em
+/// milissegundos — agregar cliques brutos a cada abertura não sobrevive.
+model DailyAnalytics {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  storeId    String?  @map("store_id")
+  categoryId String?  @map("category_id")
+  channelId  String?  @map("channel_id")
+
+  /// `${storeId ?? "*"}:${categoryId ?? "*"}:${channelId ?? "*"}`.
+  /// As FKs continuam nullable para permitir o JOIN, mas a unicidade é
+  /// garantida por esta coluna — um índice único sobre colunas nulas não
+  /// impede duplicatas no Postgres.
+  dimensionKey String @default("*:*:*") @map("dimension_key")
+
+  productsScanned Int @default(0) @map("products_scanned")
+  offersDetected  Int @default(0) @map("offers_detected")
+  offersApproved  Int @default(0) @map("offers_approved")
+  offersPublished Int @default(0) @map("offers_published")
+  offersRejected  Int @default(0) @map("offers_rejected")
+
+  impressions  Int     @default(0)
+  clicks       Int     @default(0)
+  uniqueClicks Int     @default(0) @map("unique_clicks")
+  conversions  Int     @default(0)
+  revenue      Decimal @default(0) @db.Decimal(12, 2)
+  orderValue   Decimal @default(0) @map("order_value") @db.Decimal(12, 2)
+
+  ctr            Decimal? @db.Decimal(5, 2)
+  conversionRate Decimal? @map("conversion_rate") @db.Decimal(5, 2)
+  avgDiscount    Decimal? @map("avg_discount") @db.Decimal(5, 2)
+  avgAnalysisMs  Int?     @map("avg_analysis_ms")
+  aiCostUsd      Decimal? @map("ai_cost_usd") @db.Decimal(10, 4)
+
+  computedAt DateTime @default(now()) @map("computed_at") @db.Timestamptz(3)
+
+  store    Store?           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category Category?        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  channel  TelegramChannel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([date, dimensionKey])
+  @@index([date(sort: Desc)])
+  @@index([storeId, date(sort: Desc)])
+  @@map("daily_analytics")
+}
+
+/// Escopo hierárquico: o valor efetivo é o do escopo mais específico
+/// que existir. Ausência de linha significa "herda do escopo acima".
+model Setting {
+  id              String           @id @default(cuid())
+  key   String
+  scope SettingScope @default(GLOBAL)
+  /// String vazia = escopo GLOBAL. Não é nullable de propósito: no Postgres
+  /// NULL != NULL, então um índice único com coluna nula deixaria passar
+  /// duplicatas silenciosamente.
+  scopeId String @default("") @map("scope_id")
+  valueType       SettingValueType @default(STRING) @map("value_type")
+  value           Json             @db.JsonB
+  defaultValue    Json?            @map("default_value") @db.JsonB
+  description     String?
+  isSecret        Boolean          @default(false) @map("is_secret")
+  isEditable      Boolean          @default(true) @map("is_editable")
+  updatedByUserId String?          @map("updated_by_user_id")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User?            @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  history   SettingHistory[]
+
+  @@unique([key, scope, scopeId])
+  @@index([key])
+  @@map("settings")
+}
+
+/// Toda escrita em Setting gera uma linha aqui. Rollback é uma leitura.
+model SettingHistory {
+  id              BigInt   @id @default(autoincrement())
+  settingId       String   @map("setting_id")
+  oldValue        Json?    @map("old_value") @db.JsonB
+  newValue        Json     @map("new_value") @db.JsonB
+  changedByUserId String?  @map("changed_by_user_id")
+  reason          String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  setting   Setting @relation(fields: [settingId], references: [id], onDelete: Cascade)
+  changedBy User?   @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([settingId, createdAt(sort: Desc)])
+  @@map("setting_history")
+}
+
+/// Desligar um conector novo em produção não pode depender de deploy.
+model FeatureFlag {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  name           String
+  description    String?
+  isEnabled      Boolean  @default(false) @map("is_enabled")
+  rolloutPercent Int      @default(100) @map("rollout_percent")
+  conditions     Json?    @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("feature_flags")
+}
+
+/// dedupeKey evita 200 alertas idênticos durante uma indisponibilidade longa.
+model Notification {
+  id         String               @id @default(cuid())
+  type       String
+  severity   NotificationSeverity @default(INFO)
+  title      String
+  body       String?
+  entityType String?              @map("entity_type")
+  entityId   String?              @map("entity_id")
+  actionUrl  String?              @map("action_url")
+  dedupeKey  String?              @unique @map("dedupe_key")
+  isRead     Boolean              @default(false) @map("is_read")
+  readAt     DateTime?            @map("read_at") @db.Timestamptz(3)
+  metadata   Json?                @db.JsonB
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([isRead, createdAt(sort: Desc)])
+  @@index([severity, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+/// Trabalho que exige um humano: revisar mapeamento, verificar cupom,
+/// corrigir seletor de scraper quebrado.
+model Task {
+  id          String     @id @default(cuid())
+  type        TaskType   @default(OTHER)
+  status      TaskStatus @default(OPEN)
+  priority    Priority   @default(NORMAL)
+  title       String
+  description String?
+
+  assignedUserId String? @map("assigned_user_id")
+  offerId        String? @map("offer_id")
+  storeId        String? @map("store_id")
+  couponId       String? @map("coupon_id")
+  categoryId     String? @map("category_id")
+  suggestionId   String? @map("suggestion_id")
+
+  dueAt       DateTime? @map("due_at") @db.Timestamptz(3)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  metadata    Json?     @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  assignedUser User?         @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  offer        Offer?        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  store        Store?        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coupon       Coupon?       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  suggestion   AiSuggestion? @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@index([status, priority, dueAt])
+  @@index([assignedUserId, status])
+  @@map("tasks")
+}
