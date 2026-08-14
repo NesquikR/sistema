@@ -43,8 +43,8 @@ export default function LojasPage() {
       setLoading(true);
       const res = await fetch("/api/v1/stores");
       const body = await res.json();
-      if (body.success && body.data?.items) {
-        setRealStores(body.data.items);
+      if (body.success && Array.isArray(body.data)) {
+        setRealStores(body.data);
       }
     } catch (e) {
       console.error("Erro ao buscar lojas:", e);
