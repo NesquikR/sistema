@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * parse, com uma mensagem de erro que não ajuda ninguém. Rotas específicas têm
  * precedência sobre o catch-all, então nada existente é afetado.
  */
-const notFound = withApiHandler(async () => {
+const notFound = withApiHandler<{ notFound: string[] }>(async () => {
   throw new NotFoundError("Endpoint");
 }, { name: "API 404" });
 
