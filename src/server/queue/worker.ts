@@ -264,3 +264,88 @@ export async function reclaimStaleJobs() {
   if (count > 0) log.warn("Jobs travados devolvidos à fila", { count });
   return count;
 }
+
+/** Execução síncrona da fila adaptada para ambientes serverless (Netlify/Vercel) */
+export async function processQueueSync(maxSeconds = 8) {
+  const started = Date.now();
+  const deadline = started + maxSeconds * 1000;
+  const queues: QueueName[] = ["connectors", "analysis", "publishing", "maintenance", "default"];
+  let processedCount = 0;
+
+  while (Date.now() < deadline) {
+    let hadWork = false;
+
+    for (const queue of queues) {
+      // Evita estourar o limite de tempo no loop
+      if (Date.now() >= deadline - 500) break;
+
+      const jobs = await queueRepository.dequeue(queue, `sync-worker-${randomUUID().slice(0, 8)}`, 1);
+      if (jobs.length > 0) {
+        hadWork = true;
+        const job = jobs[0];
+        const correlationId = randomUUID();
+        const jobStarted = Date.now();
+
+        await runWithContext({ source: "queue", correlationId, jobId: String(job.id) }, async () => {
+          const controller = new AbortController();
+          let timer: NodeJS.Timeout | undefined;
+
+          try {
+            const definition = handlerRegistry.get(job.name);
+            const remainingMs = deadline - Date.now();
+            const timeoutMs = Math.min(definition.timeoutMs ?? 60_000, remainingMs);
+
+            timer = setTimeout(() => controller.abort(), timeoutMs);
+
+            const result = await Promise.race([
+              definition.handler(job.payload as never, {
+                job,
+                attempt: job.attempts,
+                correlationId,
+                signal: controller.signal,
+              }),
+              new Promise<never>((_, reject) => {
+                controller.signal.addEventListener("abort", () =>
+                  reject(new TimeoutError(`Job excedeu ${timeoutMs}ms`)),
+                );
+              }),
+            ]);
+
+            await queueRepository.complete(job.id);
+            processedCount++;
+
+            log.success("Sync Job concluído", {
+              id: String(job.id),
+              name: job.name,
+              attempt: job.attempts,
+              durationMs: Date.now() - jobStarted,
+              ...(result && typeof result === "object" && "message" in result ? { resultado: (result as any).message } : {}),
+            });
+          } catch (e) {
+            const err = normalizeError(e);
+            const exhausted = job.attempts >= job.maxAttempts;
+            const canRetry = err.retryable && !exhausted;
+
+            if (canRetry) {
+              await queueRepository.retry(job.id, new Date(Date.now() + 2000), err.message);
+            } else {
+              await queueRepository.fail(job.id, err.message, exhausted || !err.retryable);
+            }
+
+            log.warn("Falha ao rodar Sync Job", {
+              id: String(job.id),
+              name: job.name,
+              error: err.message,
+            });
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
+        });
+      }
+    }
+
+    if (!hadWork) break;
+  }
+
+  return processedCount;
+}

@@ -8,6 +8,8 @@ import { schedulerRepository } from "@/server/repositories/scheduler.repository"
 import { isValidCron, upcomingRuns } from "@/server/scheduler/cron";
 import { scheduler } from "@/server/scheduler/scheduler";
 
+import { processQueueSync } from "@/server/queue/worker";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -25,7 +27,9 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   const searchParams = new URL(request.url).searchParams;
   if (searchParams.get("action") === "tick" || searchParams.get("tick") === "true") {
     const dispatched = await scheduler.tick();
-    return ok({ status: "success", dispatched });
+    // Processa a fila de forma síncrona por até 8 segundos no ambiente serverless
+    const processedJobs = await processQueueSync(8);
+    return ok({ status: "success", dispatched, processedJobs });
   }
 
   const jobs = await schedulerRepository.findAll();
@@ -50,7 +54,8 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   switch (body.action) {
     case "tick": {
       const dispatched = await scheduler.tick();
-      return ok({ dispatched });
+      const processedJobs = await processQueueSync(8);
+      return ok({ dispatched, processedJobs });
     }
     case "run": {
       const job = await scheduler.runNow(body.key);
