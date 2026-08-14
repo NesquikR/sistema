@@ -372,8 +372,8 @@ export function AddConnectorDialog({
                       className={cn(
                         "group relative overflow-hidden rounded-[14px] border p-4 text-left transition-all duration-200",
                         disabled
-                          ? "cursor-not-allowed border-line bg-black/20 opacity-55"
-                          : "border-line bg-black/20 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.035]",
+                          ? "cursor-not-allowed border-line bg-surface-2 opacity-55"
+                          : "border-line bg-surface-2 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.035]",
                       )}
                     >
                       <span
@@ -438,7 +438,7 @@ export function AddConnectorDialog({
 
               {/* Passo a passo para obter as chaves */}
               {selected.setupSteps.length > 0 && (
-                <div className="rounded-[13px] border border-line bg-black/20 p-4">
+                <div className="rounded-[13px] border border-line bg-surface-2 p-4">
                   <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-fg-subtle">
                     Como obter as chaves
                   </p>
@@ -457,7 +457,7 @@ export function AddConnectorDialog({
                       href={selected.docsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-violet-soft transition-colors hover:text-violet"
+                      className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary"
                     >
                       Documentação oficial
                       <ExternalLink className="h-3 w-3" strokeWidth={2} />
@@ -469,7 +469,7 @@ export function AddConnectorDialog({
               {/* URL de redirect — precisa estar cadastrada no painel da loja */}
               {isOAuth && (
                 <div className="rounded-[13px] border border-violet/25 bg-violet/[0.05] p-4">
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-violet-soft">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-primary">
                     URL de redirect
                   </p>
                   <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-muted">
@@ -478,7 +478,7 @@ export function AddConnectorDialog({
                     bater caractere por caractere.
                   </p>
                   <div className="mt-2.5 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded-[9px] border border-line bg-black/40 px-2.5 py-2 font-mono text-[11.5px] text-fg">
+                    <code className="min-w-0 flex-1 truncate rounded-[9px] border border-line bg-surface-2 px-2.5 py-2 font-mono text-[11.5px] text-fg">
                       {redirectUri}
                     </code>
                     <Button
@@ -506,7 +506,7 @@ export function AddConnectorDialog({
                 <div key={field.id}>
                   <label className="flex items-center gap-1.5 text-[12.5px] font-medium text-fg">
                     {field.label}
-                    {field.required && <span className="text-pink">*</span>}
+                    {field.required && <span className="text-danger">*</span>}
                     {field.secret && (
                       <ShieldCheck className="h-3 w-3 text-ok" strokeWidth={2} />
                     )}

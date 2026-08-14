@@ -32,7 +32,7 @@ const kpis: Kpi[] = [
     value: "3.210",
     delta: 8.1,
     hint: "Aprovadas nos filtros de desconto real",
-    color: "#8b5cf6",
+    color: "var(--color-primary)",
     series: [180, 220, 200, 260, 240, 300, 320, 290, 360, 380, 410, 430],
   },
   {
@@ -40,7 +40,7 @@ const kpis: Kpi[] = [
     value: "604",
     delta: 5.6,
     hint: "3 canais do Telegram · 53 hoje",
-    color: "#ec4899",
+    color: "var(--color-danger)",
     series: [28, 34, 31, 40, 44, 39, 48, 52, 49, 56, 60, 58],
   },
   {
@@ -56,7 +56,7 @@ const kpis: Kpi[] = [
     value: pct(7.4),
     delta: 2.3,
     hint: "Cliques / impressões nos canais",
-    color: "#22d3ee",
+    color: "var(--color-primary)",
     series: [6.1, 6.4, 6.2, 6.8, 7.0, 6.9, 7.2, 7.1, 7.3, 7.5, 7.4, 7.6],
   },
   {
@@ -64,7 +64,7 @@ const kpis: Kpi[] = [
     value: pct(3.9),
     delta: 1.1,
     hint: "Pedidos confirmados por clique rastreado",
-    color: "#a78bfa",
+    color: "var(--color-primary)",
     series: [3.1, 3.3, 3.2, 3.5, 3.6, 3.4, 3.7, 3.8, 3.6, 3.9, 3.9, 4.0],
   },
   {
@@ -113,7 +113,7 @@ export default function OperationsPage() {
       id: s.id,
       name: s.name,
       short: s.name.substring(0, 2).toUpperCase(),
-      accent: s.accentColor || "#8b5cf6",
+      accent: s.accentColor || "var(--color-primary)",
       status: s.status === "ACTIVE" ? "online" : s.status === "DEGRADED" ? "degradado" : "offline",
       successRate: s.successRate ? Number(s.successRate) : 100,
       avgLatencyMs: s.avgLatencyMs || 0,
@@ -150,14 +150,14 @@ export default function OperationsPage() {
   return (
     <PageShell>
       {/* ── Cabeçalho de comando ───────────────────────────────── */}
-      <div className="relative mb-7 overflow-hidden rounded-[20px] border border-line bg-[linear-gradient(180deg,#ffffff08,#ffffff02)] p-6 backdrop-blur-xl">
+      <div className="relative mb-7 overflow-hidden rounded-[20px] border border-line bg-surface p-6 ">
         <div className="pointer-events-none absolute inset-0 grid-noise opacity-40" />
         <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-violet/12 blur-3xl" />
         <div className="pointer-events-none absolute -left-20 -bottom-28 h-56 w-56 rounded-full bg-pink/8 blur-3xl" />
 
         <div className="relative flex flex-wrap items-start justify-between gap-6">
           <div>
-            <Badge tone="violet" className="mb-3">
+            <Badge tone="primary" className="mb-3">
               <Radar className="h-3 w-3" /> Ciclo #4.812 em execução
             </Badge>
             <h1 className="text-[30px] font-semibold leading-none tracking-[-0.035em]">
@@ -186,7 +186,7 @@ export default function OperationsPage() {
             />
             <StatusTile
               label="Próxima execução"
-              value={<span className="num text-violet-soft">em 2 min</span>}
+              value={<span className="num text-primary">em 2 min</span>}
               hint="Cron */15 · 5 conectores"
             />
           </div>
@@ -204,15 +204,15 @@ export default function OperationsPage() {
 
       {/* ── Gráficos principais ────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
-        <Card className="xl:col-span-2" glow>
+        <Card className="xl:col-span-2">
           <CardHeader
             title="Operação nas últimas 24 horas"
             subtitle="Produtos encontrados, aprovados pela IA e efetivamente publicados"
             action={
               <div className="flex items-center gap-3 text-[11px]">
                 <Legend color="#3b82f6" label="Encontradas" />
-                <Legend color="#8b5cf6" label="Aprovadas" />
-                <Legend color="#ec4899" label="Publicadas" />
+                <Legend color="var(--color-primary)" label="Aprovadas" />
+                <Legend color="var(--color-danger)" label="Publicadas" />
               </div>
             }
           />
@@ -223,8 +223,8 @@ export default function OperationsPage() {
               height={252}
               series={[
                 { key: "encontradas", name: "Encontradas", color: "#3b82f6" },
-                { key: "aprovadas", name: "Aprovadas", color: "#8b5cf6" },
-                { key: "publicadas", name: "Publicadas", color: "#ec4899" },
+                { key: "aprovadas", name: "Aprovadas", color: "var(--color-primary)" },
+                { key: "publicadas", name: "Publicadas", color: "var(--color-danger)" },
               ]}
             />
           </CardBody>
@@ -238,7 +238,7 @@ export default function OperationsPage() {
           <CardBody className="space-y-3.5">
             {funnel.map((f, i) => {
               const share = (f.value / funnel[0].value) * 100;
-              const colors = ["#3b82f6", "#22d3ee", "#a78bfa", "#8b5cf6", "#ec4899"];
+              const colors = ["#3b82f6", "var(--color-primary)", "var(--color-primary)", "var(--color-primary)", "var(--color-danger)"];
               return (
                 <div key={f.stage}>
                   <div className="flex items-baseline justify-between">
@@ -261,13 +261,13 @@ export default function OperationsPage() {
 
       {/* ── Fila da IA + atividade ─────────────────────────────── */}
       <div className="mb-6 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
-        <Card className="xl:col-span-2" glow>
+        <Card className="xl:col-span-2">
           <CardHeader
             title={
               <span className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-violet-soft" strokeWidth={2} />
+                <Bot className="h-4 w-4 text-primary" strokeWidth={2} />
                 Fila da IA
-                <Badge tone="violet">aguardando decisão</Badge>
+                <Badge tone="primary">aguardando decisão</Badge>
               </span>
             }
             subtitle="Ofertas que passaram em todos os filtros automáticos e aguardam sua aprovação"
@@ -313,7 +313,7 @@ export default function OperationsPage() {
               data={hourly}
               xKey="hour"
               height={196}
-              series={[{ key: "cliques", name: "Cliques", color: "#22d3ee" }]}
+              series={[{ key: "cliques", name: "Cliques", color: "var(--color-primary)" }]}
             />
           </CardBody>
         </Card>
@@ -343,7 +343,7 @@ export default function OperationsPage() {
               xKey="name"
               height={196}
               formatter={(v) => `${v}%`}
-              series={[{ key: "share", name: "Participação", color: "#8b5cf6" }]}
+              series={[{ key: "share", name: "Participação", color: "var(--color-primary)" }]}
             />
           </CardBody>
         </Card>
@@ -366,7 +366,7 @@ export default function OperationsPage() {
           {currentStores.map((s: any) => (
             <div
               key={s.id}
-              className="rounded-[13px] border border-line bg-black/20 p-3.5 transition-colors duration-200 hover:border-white/[0.13]"
+              className="rounded-[13px] border border-line bg-surface-2 p-3.5 transition-colors duration-200 hover:border-white/[0.13]"
             >
               <div className="flex items-center gap-2">
                 <span
@@ -421,7 +421,7 @@ function StatusTile({
   hint: string;
 }) {
   return (
-    <div className="min-w-[168px] rounded-[13px] border border-line bg-black/25 px-3.5 py-3 backdrop-blur-md">
+    <div className="min-w-[168px] rounded-[13px] border border-line bg-surface-2 px-3.5 py-3 -md">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-subtle">
         {label}
       </p>

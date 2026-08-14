@@ -12,8 +12,8 @@ const styles: Record<
   { icon: React.ElementType; color: string; label: string }
 > = {
   busca: { icon: Search, color: "#3b82f6", label: "BUSCA" },
-  ia: { icon: Bot, color: "#8b5cf6", label: "IA" },
-  telegram: { icon: Send, color: "#22d3ee", label: "TELEGRAM" },
+  ia: { icon: Bot, color: "var(--color-primary)", label: "IA" },
+  telegram: { icon: Send, color: "var(--color-primary)", label: "TELEGRAM" },
   sistema: { icon: Settings2, color: "#6b7280", label: "SISTEMA" },
   erro: { icon: AlertTriangle, color: "#fb7185", label: "ERRO" },
 };
@@ -44,7 +44,7 @@ export function ActivityStream() {
 
       <div className="relative max-h-[420px] overflow-y-auto px-5 pb-5">
         {/* trilho vertical */}
-        <span className="absolute bottom-6 left-[35px] top-1 w-px bg-[linear-gradient(180deg,#ffffff1a,transparent)]" />
+        <span className="absolute bottom-6 left-[35px] top-1 w-px bg-surface" />
 
         <AnimatePresence initial={false}>
           {items.map((e) => {

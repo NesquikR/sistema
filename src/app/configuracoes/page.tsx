@@ -77,7 +77,7 @@ export default function ConfiguracoesPage() {
                   >
                     <Icon
                       className={
-                        "h-4 w-4 " + (isActive ? "text-violet-soft" : "text-fg-subtle")
+                        "h-4 w-4 " + (isActive ? "text-primary" : "text-fg-subtle")
                       }
                       strokeWidth={1.9}
                     />
@@ -91,7 +91,7 @@ export default function ConfiguracoesPage() {
 
         <div className="space-y-3.5">
           {/* Telegram */}
-          <Card glow>
+          <Card>
             <CardHeader
               title="Telegram"
               subtitle="Credenciais do bot e canais de destino"
@@ -117,7 +117,7 @@ export default function ConfiguracoesPage() {
                 {channels.map((c) => (
                   <div
                     key={c.id}
-                    className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-black/20 px-3.5 py-3"
+                    className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-surface-2 px-3.5 py-3"
                   >
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-fg">{c.name}</p>
@@ -192,7 +192,7 @@ export default function ConfiguracoesPage() {
               <div>
                 <div className="flex items-baseline justify-between">
                   <p className="text-[13px] font-medium text-fg">Desconto mínimo global</p>
-                  <span className="num text-[17px] font-semibold text-violet-soft">
+                  <span className="num text-[17px] font-semibold text-primary">
                     {minDiscount}%
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export default function ConfiguracoesPage() {
                   onChange={(e) => setMinDiscount(Number(e.target.value))}
                   className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-violet"
                   style={{
-                    background: `linear-gradient(90deg,#8b5cf6 ${((minDiscount - 10) / 70) * 100}%, #ffffff14 ${((minDiscount - 10) / 70) * 100}%)`,
+                    background: `linear-gradient(90deg,var(--color-primary) ${((minDiscount - 10) / 70) * 100}%, #ffffff14 ${((minDiscount - 10) / 70) * 100}%)`,
                   }}
                 />
                 <p className="mt-2 text-[11.5px] text-fg-subtle">
@@ -218,7 +218,7 @@ export default function ConfiguracoesPage() {
                 {cats.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center gap-3 rounded-[12px] border border-line bg-black/20 px-3.5 py-2.5"
+                    className="flex items-center gap-3 rounded-[12px] border border-line bg-surface-2 px-3.5 py-2.5"
                   >
                     <span className="text-[15px]">{c.emoji}</span>
                     <span className="text-[12.5px] font-medium text-fg">{c.name}</span>
@@ -368,7 +368,7 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start gap-4 rounded-[12px] border border-line bg-black/20 px-3.5 py-3">
+    <div className="flex items-start gap-4 rounded-[12px] border border-line bg-surface-2 px-3.5 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[12.5px] font-medium text-fg">{label}</p>
         <p className="mt-1 text-[11.5px] leading-relaxed text-fg-subtle">{hint}</p>

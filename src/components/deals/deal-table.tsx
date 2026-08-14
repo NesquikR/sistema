@@ -13,7 +13,7 @@ import { cn, dateTimeOf, int, money, relativeTime } from "@/lib/utils";
 import type { Deal, DealStatus } from "@/types";
 
 const statusTone: Record<DealStatus, React.ComponentProps<typeof Badge>["tone"]> = {
-  fila: "violet",
+  fila: "primary",
   aprovada: "blue",
   agendada: "blue",
   publicada: "ok",
@@ -179,7 +179,7 @@ export function DealTable({ source }: { source: Deal[] }) {
                     {money(d.previousPrice)}
                   </td>
                   <td className="px-4">
-                    <Badge tone={d.discount >= 45 ? "pink" : "neutral"}>−{d.discount}%</Badge>
+                    <Badge tone={d.discount >= 45 ? "danger" : "neutral"}>−{d.discount}%</Badge>
                   </td>
                   <td className="num px-4 text-[12.5px] text-fg-muted">
                     <span className="flex items-center gap-1">
@@ -248,7 +248,7 @@ function Th({
 }
 
 function ScoreBar({ score }: { score: number }) {
-  const tone = score >= 85 ? "#34d399" : score >= 70 ? "#8b5cf6" : score >= 50 ? "#fbbf24" : "#fb7185";
+  const tone = score >= 85 ? "#34d399" : score >= 70 ? "var(--color-primary)" : score >= 50 ? "#fbbf24" : "#fb7185";
   return (
     <span className="flex items-center gap-2">
       <span className="h-1 w-12 overflow-hidden rounded-full bg-white/[0.07]">

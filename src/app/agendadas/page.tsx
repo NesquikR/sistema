@@ -54,7 +54,7 @@ export default function AgendadasPage() {
           return (
             <div
               key={w.label}
-              className="rounded-[14px] border border-line bg-[linear-gradient(180deg,#ffffff06,#ffffff02)] px-4 py-3.5 backdrop-blur-xl"
+              className="rounded-[14px] border border-line bg-surface px-4 py-3.5 "
             >
               <div className="flex items-center justify-between">
                 <p className="text-[12px] font-medium text-fg">{w.label}</p>
@@ -71,7 +71,7 @@ export default function AgendadasPage() {
                     key={i}
                     className="h-1 flex-1 rounded-full"
                     style={{
-                      background: i < w.load ? (full ? "#fbbf24" : "#8b5cf6") : "#ffffff12",
+                      background: i < w.load ? (full ? "#fbbf24" : "var(--color-primary)") : "#ffffff12",
                     }}
                   />
                 ))}
@@ -81,7 +81,7 @@ export default function AgendadasPage() {
         })}
       </div>
 
-      <Card glow>
+      <Card>
         <CardHeader
           title="Linha do tempo de publicação"
           subtitle="Ordenada pelo horário programado"
@@ -91,7 +91,7 @@ export default function AgendadasPage() {
         />
         <CardBody>
           <div className="relative">
-            <span className="absolute bottom-4 left-[58px] top-4 w-px bg-[linear-gradient(180deg,#ffffff18,#ffffff05)]" />
+            <span className="absolute bottom-4 left-[58px] top-4 w-px bg-surface" />
 
             {scheduled.map((d, i) => (
               <motion.div
@@ -108,9 +108,9 @@ export default function AgendadasPage() {
                   <p className="text-[10.5px] text-fg-subtle">hoje</p>
                 </div>
 
-                <span className="relative z-10 mt-4 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-base bg-violet shadow-[0_0_12px_-2px_#8b5cf6]" />
+                <span className="relative z-10 mt-4 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-base bg-violet shadow-[0_0_12px_-2px_var(--color-primary)]" />
 
-                <div className="min-w-0 flex-1 rounded-[14px] border border-line bg-black/20 p-3.5 transition-colors duration-200 hover:border-white/[0.13]">
+                <div className="min-w-0 flex-1 rounded-[14px] border border-line bg-surface-2 p-3.5 transition-colors duration-200 hover:border-white/[0.13]">
                   <div className="flex flex-wrap items-center gap-3.5">
                     <DealThumb deal={d} size={52} />
                     <div className="min-w-0 flex-1">
@@ -135,7 +135,7 @@ export default function AgendadasPage() {
                           {money(d.previousPrice)}
                         </p>
                       </div>
-                      <Badge tone="pink">−{d.discount}%</Badge>
+                      <Badge tone="danger">−{d.discount}%</Badge>
                     </div>
 
                     <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">

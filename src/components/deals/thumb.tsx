@@ -40,7 +40,7 @@ export function DealThumb({
         {initials}
       </span>
       {deal.discount >= 45 && (
-        <span className="absolute bottom-0 left-0 right-0 bg-black/55 py-[2px] text-center text-[9px] font-bold tracking-wide text-white backdrop-blur-sm">
+        <span className="absolute bottom-0 left-0 right-0 bg-surface-2 py-[2px] text-center text-[9px] font-bold tracking-wide text-white ">
           -{deal.discount}%
         </span>
       )}

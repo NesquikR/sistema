@@ -1,16 +1,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Tone = "neutral" | "violet" | "pink" | "blue" | "ok" | "warn" | "danger";
+type Tone = "neutral" | "primary" | "blue" | "ok" | "warn" | "danger";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-white/[0.05] text-fg-muted border-line-strong",
-  violet: "bg-violet/12 text-violet-soft border-violet/25",
-  pink: "bg-pink/12 text-pink border-pink/25",
-  blue: "bg-blue/12 text-blue border-blue/25",
-  ok: "bg-ok/12 text-ok border-ok/25",
-  warn: "bg-warn/12 text-warn border-warn/25",
-  danger: "bg-danger/12 text-danger border-danger/25",
+  neutral: "bg-surface-2 text-fg-muted border-line-strong",
+  primary: "bg-primary-bg text-primary border-primary/20",
+  blue: "bg-[#eff6ff] text-[#2563eb] border-[#2563eb]/20 dark:bg-[#172554] dark:text-[#60a5fa] dark:border-[#60a5fa]/20",
+  ok: "bg-ok/10 text-ok border-ok/20",
+  warn: "bg-warn/10 text-warn border-warn/20",
+  danger: "bg-danger/10 text-danger border-danger/20",
 };
 
 export function Badge({
@@ -21,7 +20,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-[3px] text-[11px] font-medium leading-none",
+        "inline-flex items-center gap-1.5 rounded border px-2 py-[3px] text-[11px] font-medium leading-none",
         tones[tone],
         className,
       )}
@@ -41,12 +40,12 @@ export function StatusDot({
 }) {
   const color =
     tone === "ok"
-      ? "#34d399"
+      ? "var(--color-ok)"
       : tone === "warn"
-        ? "#fbbf24"
+        ? "var(--color-warn)"
         : tone === "danger"
-          ? "#fb7185"
-          : "#6b7280";
+          ? "var(--color-danger)"
+          : "var(--color-fg-subtle)";
   return (
     <span className={cn("relative flex h-[7px] w-[7px]", className)}>
       {pulse && (
@@ -57,7 +56,7 @@ export function StatusDot({
       )}
       <span
         className="relative inline-flex h-[7px] w-[7px] rounded-full"
-        style={{ background: color, boxShadow: `0 0 10px ${color}80` }}
+        style={{ background: color }}
       />
     </span>
   );

@@ -92,7 +92,7 @@ function QueueRow({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[14px] border border-line bg-black/20 p-3.5 transition-all duration-200",
+        "group relative overflow-hidden rounded-[14px] border border-line bg-surface-2 p-3.5 transition-all duration-200",
         "hover:border-white/[0.13] hover:bg-white/[0.03]",
         flash === "publicada" && "border-ok/40 bg-ok/[0.06]",
         flash === "agendada" && "border-blue/40 bg-blue/[0.06]",
@@ -146,10 +146,10 @@ function QueueRow({
               </p>
             </div>
 
-            <Badge tone="pink" className="mb-0.5">
+            <Badge tone="danger" className="mb-0.5">
               −{deal.discount}%
             </Badge>
-            <Badge tone="violet" className="mb-0.5">
+            <Badge tone="primary" className="mb-0.5">
               {belowAverage}% abaixo da média
             </Badge>
             {deal.freeShipping && (
@@ -164,12 +164,12 @@ function QueueRow({
             )}
 
             <div className="ml-auto hidden w-[110px] opacity-60 transition-opacity group-hover:opacity-100 xl:block">
-              <Sparkline data={deal.priceHistory} color="#a78bfa" height={30} />
+              <Sparkline data={deal.priceHistory} color="var(--color-primary)" height={30} />
             </div>
           </div>
 
           <p className="mt-3 flex items-start gap-2 rounded-[10px] border border-violet/15 bg-violet/[0.05] px-2.5 py-2 text-[11.5px] leading-relaxed text-fg-muted">
-            <Sparkles className="mt-[1px] h-3 w-3 shrink-0 text-violet-soft" strokeWidth={2} />
+            <Sparkles className="mt-[1px] h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
             {deal.aiVerdict}
           </p>
 
@@ -201,7 +201,7 @@ function QueueRow({
 function ScoreRing({ score }: { score: number }) {
   const r = 17;
   const c = 2 * Math.PI * r;
-  const tone = score >= 85 ? "#34d399" : score >= 70 ? "#8b5cf6" : "#fbbf24";
+  const tone = score >= 85 ? "#34d399" : score >= 70 ? "var(--color-primary)" : "#fbbf24";
   return (
     <Tooltip content="Score de confiança da IA">
       <span className="relative flex h-[42px] w-[42px] shrink-0 items-center justify-center">

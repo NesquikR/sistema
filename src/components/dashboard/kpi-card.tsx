@@ -40,7 +40,7 @@ export function KpiCard({ kpi }: { kpi: Kpi }) {
         my.set(0.5);
       }}
       style={{ rotateX: rx, rotateY: ry, transformPerspective: 900 }}
-      className="group relative overflow-hidden rounded-[18px] border border-line bg-[linear-gradient(180deg,#ffffff07,#ffffff02)] p-5 backdrop-blur-xl transition-colors duration-200 hover:border-white/[0.12]"
+      className="group relative overflow-hidden rounded-[18px] border border-line bg-surface p-5  transition-colors duration-200 hover:border-white/[0.12]"
     >
       {/* brilho superior no hover */}
       <span

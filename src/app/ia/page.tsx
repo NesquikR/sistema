@@ -17,7 +17,7 @@ import { int, money, pct, relativeTime } from "@/lib/utils";
 const suggestions = [
   {
     icon: Lightbulb,
-    tone: "#8b5cf6",
+    tone: "var(--color-primary)",
     title: "Elevar o desconto mínimo de Maquiagem para 45%",
     detail:
       "Ofertas entre 40% e 45% nessa categoria converteram 1,8% — abaixo da média global de 3,9%. O corte reduziria 22% do volume e aumentaria a receita por publicação.",
@@ -25,7 +25,7 @@ const suggestions = [
   },
   {
     icon: Timer,
-    tone: "#22d3ee",
+    tone: "var(--color-primary)",
     title: "Concentrar publicações entre 19h e 21h",
     detail:
       "O pico noturno responde por 31% dos cliques com apenas 18% das publicações. Realocar quatro slots da tarde manteria o mesmo volume diário.",
@@ -64,9 +64,9 @@ export default function IaPage() {
       />
 
       {/* Cartão do modelo */}
-      <Card glow className="mb-5 overflow-hidden">
+      <Card className="mb-5 overflow-hidden">
         <div className="flex flex-wrap items-center gap-6 p-5">
-          <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] shadow-[0_10px_28px_-14px_#8b5cf6]">
+          <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-surface shadow-[0_10px_28px_-14px_var(--color-primary)]">
             <Bot className="h-6 w-6 text-white" strokeWidth={1.9} />
           </span>
           <div>
@@ -82,8 +82,8 @@ export default function IaPage() {
           <div className="ml-auto grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Tile label="Decisões" value={int(evaluated)} hint="últimos 30 dias" />
             <Tile label="Precisão" value={pct(91.4)} hint="+2,4 p.p. no mês" accent="#34d399" />
-            <Tile label="Latência média" value="1,4 s" hint="−18% no mês" accent="#22d3ee" />
-            <Tile label="Custo" value={money(38.2)} hint="14,8 M tokens" accent="#a78bfa" />
+            <Tile label="Latência média" value="1,4 s" hint="−18% no mês" accent="var(--color-primary)" />
+            <Tile label="Custo" value={money(38.2)} hint="14,8 M tokens" accent="var(--color-primary)" />
           </div>
         </div>
       </Card>
@@ -100,8 +100,8 @@ export default function IaPage() {
               xKey="day"
               height={228}
               series={[
-                { key: "precisao", name: "Precisão (%)", color: "#8b5cf6" },
-                { key: "latencia", name: "Latência (s)", color: "#22d3ee" },
+                { key: "precisao", name: "Precisão (%)", color: "var(--color-primary)" },
+                { key: "latencia", name: "Latência (s)", color: "var(--color-primary)" },
               ]}
             />
           </CardBody>
@@ -148,7 +148,7 @@ export default function IaPage() {
                 </div>
                 <Progress
                   value={r.share * 2.6}
-                  tone={["#fb7185", "#fbbf24", "#8b5cf6", "#3b82f6", "#22d3ee", "#6b7280"][i]}
+                  tone={["#fb7185", "#fbbf24", "var(--color-primary)", "#3b82f6", "var(--color-primary)", "#6b7280"][i]}
                   className="mt-2"
                 />
               </div>
@@ -170,7 +170,7 @@ export default function IaPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.34, delay: i * 0.07 }}
-                  className="group rounded-[14px] border border-line bg-black/20 p-3.5 transition-colors duration-200 hover:border-white/[0.13]"
+                  className="group rounded-[14px] border border-line bg-surface-2 p-3.5 transition-colors duration-200 hover:border-white/[0.13]"
                 >
                   <div className="flex items-start gap-3">
                     <span
@@ -185,7 +185,7 @@ export default function IaPage() {
                         {s.detail}
                       </p>
                       <div className="mt-2.5 flex items-center gap-2">
-                        <Badge tone="violet">{s.impact}</Badge>
+                        <Badge tone="primary">{s.impact}</Badge>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -212,7 +212,7 @@ export default function IaPage() {
           {deals.slice(0, 12).map((d) => (
             <div
               key={d.id}
-              className="flex items-center gap-3.5 rounded-[12px] border border-line bg-black/20 px-3.5 py-2.5 transition-colors duration-150 hover:border-white/[0.13]"
+              className="flex items-center gap-3.5 rounded-[12px] border border-line bg-surface-2 px-3.5 py-2.5 transition-colors duration-150 hover:border-white/[0.13]"
             >
               <DealThumb deal={d} size={38} />
               <div className="min-w-0 flex-1">
@@ -224,7 +224,7 @@ export default function IaPage() {
                   d.status === "publicada" || d.status === "agendada"
                     ? "ok"
                     : d.status === "fila"
-                      ? "violet"
+                      ? "primary"
                       : "neutral"
                 }
               >
@@ -256,7 +256,7 @@ function Tile({
   accent?: string;
 }) {
   return (
-    <div className="min-w-[110px] rounded-[12px] border border-line bg-black/25 px-3.5 py-2.5">
+    <div className="min-w-[110px] rounded-[12px] border border-line bg-surface-2 px-3.5 py-2.5">
       <p className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-fg-subtle">
         {label}
       </p>

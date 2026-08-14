@@ -82,7 +82,7 @@ export default function LogsPage() {
         {counts.map((c) => (
           <div
             key={c.level}
-            className="rounded-[14px] border border-line bg-[linear-gradient(180deg,#ffffff06,#ffffff02)] px-4 py-3.5 backdrop-blur-xl"
+            className="rounded-[14px] border border-line bg-surface px-4 py-3.5 "
           >
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]">
               <span
@@ -124,7 +124,7 @@ export default function LogsPage() {
         </CardBody>
       </Card>
 
-      <Card glow className="overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2.5 p-5 pb-4">
           <SearchInput
             className="w-full sm:w-[320px]"
@@ -191,7 +191,7 @@ export default function LogsPage() {
                   >
                     {meta.label}
                   </span>
-                  <span className="w-[168px] shrink-0 truncate text-violet-soft/80">
+                  <span className="w-[168px] shrink-0 truncate text-primary/80">
                     {l.source}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-fg-muted">{l.message}</span>
@@ -209,10 +209,10 @@ export default function LogsPage() {
                     transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                     className="overflow-hidden px-5 pb-3.5 pl-[46px]"
                   >
-                    <div className="rounded-[10px] border border-line bg-black/40 p-3.5">
+                    <div className="rounded-[10px] border border-line bg-surface-2 p-3.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="neutral">{l.id}</Badge>
-                        <Badge tone="violet">{l.source}</Badge>
+                        <Badge tone="primary">{l.source}</Badge>
                         <Badge tone="neutral">{relativeTime(l.ts, NOW)}</Badge>
                       </div>
                       <pre className="mt-3 whitespace-pre-wrap text-[11.5px] leading-relaxed text-fg-muted">

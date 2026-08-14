@@ -2,62 +2,76 @@
 
 /* ============================================================
    BeautyBot — Design Tokens
-   Dark-only. Grafite + violeta/rosa/azul elétrico.
+   Light/Dark. Branco+Azul / Preto+Vermelho. Cores sólidas.
    ============================================================ */
 
 @theme {
-  /* superfícies */
-  --color-base: #07070a;
-  --color-surface: #0b0b10;
-  --color-surface-2: #101017;
-  --color-surface-3: #16161f;
-  --color-elevated: #1b1b26;
+  /* superfícies — modo claro (padrão) */
+  --color-base: #ffffff;
+  --color-surface: #f8f9fb;
+  --color-surface-2: #f1f3f6;
+  --color-surface-3: #e8eaef;
+  --color-elevated: #ffffff;
 
   /* traços */
-  --color-line: #ffffff0d;
-  --color-line-strong: #ffffff1a;
+  --color-line: #e2e5ea;
+  --color-line-strong: #d0d4db;
 
   /* texto */
-  --color-fg: #ecedf1;
-  --color-fg-muted: #9aa0ad;
-  --color-fg-subtle: #6b7280;
+  --color-fg: #111827;
+  --color-fg-muted: #4b5563;
+  --color-fg-subtle: #9ca3af;
 
-  /* acentos */
-  --color-violet: #8b5cf6;
-  --color-violet-soft: #a78bfa;
-  --color-pink: #ec4899;
-  --color-blue: #3b82f6;
-  --color-cyan: #22d3ee;
+  /* primário — azul */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-bg: #eff6ff;
+  --color-primary-fg: #ffffff;
 
   /* semânticos */
-  --color-ok: #34d399;
-  --color-warn: #fbbf24;
-  --color-danger: #fb7185;
+  --color-ok: #16a34a;
+  --color-warn: #d97706;
+  --color-danger: #dc2626;
 
   --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system,
     BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", "Cascadia Mono", Consolas,
     "Liberation Mono", monospace;
 
-  --radius-xl: 14px;
-  --radius-2xl: 18px;
-
-  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   --animate-pulse-dot: pulse-dot 2.4s ease-in-out infinite;
-  --animate-sweep: sweep 3.5s linear infinite;
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.45; transform: scale(0.88); }
 }
-@keyframes sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+
+/* ============================================================
+   Dark mode overrides
+   ============================================================ */
+
+.dark {
+  --color-base: #09090b;
+  --color-surface: #111113;
+  --color-surface-2: #1a1a1e;
+  --color-surface-3: #232328;
+  --color-elevated: #1f1f24;
+
+  --color-line: #27272a;
+  --color-line-strong: #3f3f46;
+
+  --color-fg: #fafafa;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+
+  --color-primary: #dc2626;
+  --color-primary-hover: #b91c1c;
+  --color-primary-bg: #1c1012;
+  --color-primary-fg: #ffffff;
+
+  --color-ok: #22c55e;
+  --color-warn: #eab308;
+  --color-danger: #ef4444;
 }
 
 /* ============================================================
@@ -69,8 +83,12 @@
 }
 
 html {
-  color-scheme: dark;
   background-color: var(--color-base);
+}
+
+.dark html,
+.dark {
+  color-scheme: dark;
 }
 
 body {
@@ -83,75 +101,35 @@ body {
   letter-spacing: -0.011em;
 }
 
-/* Luz ambiente do topo — sutil, nunca "neon" */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(1100px 520px at 18% -12%, rgba(139, 92, 246, 0.1), transparent 62%),
-    radial-gradient(900px 460px at 88% -8%, rgba(59, 130, 246, 0.07), transparent 60%),
-    radial-gradient(700px 400px at 60% 108%, rgba(236, 72, 153, 0.045), transparent 65%);
-}
-
 ::selection {
-  background: rgba(139, 92, 246, 0.32);
+  background: var(--color-primary);
   color: #fff;
 }
 
 /* Scrollbars discretas */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #ffffff1f transparent;
+  scrollbar-color: var(--color-line-strong) transparent;
 }
-*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: #ffffff14;
-  border-radius: 99px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+  background: var(--color-line-strong);
+  border-radius: 4px;
 }
-*::-webkit-scrollbar-thumb:hover { background: #ffffff26; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--color-fg-subtle); }
 
 :focus-visible {
-  outline: 2px solid var(--color-violet);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 /* ============================================================
    Utilitários compostos
    ============================================================ */
 
-@utility panel {
-  background: linear-gradient(180deg, #ffffff07, #ffffff02);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-2xl);
-  backdrop-filter: blur(14px) saturate(140%);
-}
-
-@utility hairline {
-  border: 1px solid var(--color-line);
-}
-
-@utility text-gradient {
-  background: linear-gradient(96deg, #ffffff 8%, #c4b5fd 52%, #f0abfc 96%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 @utility num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
-}
-
-@utility grid-noise {
-  background-image:
-    linear-gradient(to right, #ffffff06 1px, transparent 1px),
-    linear-gradient(to bottom, #ffffff06 1px, transparent 1px);
-  background-size: 44px 44px;
 }

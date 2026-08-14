@@ -59,7 +59,7 @@ export default function CategoriasPage() {
               xKey="name"
               formatter={(v) => money(v)}
               data={items.map((c) => ({ name: c.name, receita: c.revenue30d }))}
-              series={[{ key: "receita", name: "Receita", color: "#8b5cf6" }]}
+              series={[{ key: "receita", name: "Receita", color: "var(--color-primary)" }]}
             />
           </CardBody>
         </Card>
@@ -72,7 +72,7 @@ export default function CategoriasPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.36, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-            className="group relative overflow-hidden rounded-[18px] border border-line bg-[linear-gradient(180deg,#ffffff07,#ffffff02)] p-5 backdrop-blur-xl transition-all duration-200 hover:border-white/[0.13]"
+            className="group relative overflow-hidden rounded-[18px] border border-line bg-surface p-5  transition-all duration-200 hover:border-white/[0.13]"
             style={{ opacity: c.active ? 1 : 0.62 }}
           >
             <span
@@ -135,7 +135,7 @@ export default function CategoriasPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[11px] border border-line bg-black/20 px-3 py-2.5">
+    <div className="rounded-[11px] border border-line bg-surface-2 px-3 py-2.5">
       <p className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-fg-subtle">
         {label}
       </p>

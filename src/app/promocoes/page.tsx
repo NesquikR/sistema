@@ -44,11 +44,11 @@ export default function PromocoesPage() {
           label="Aguardando decisão"
           value={int(deals.filter((d) => d.status === "fila").length)}
           hint="fila da IA"
-          accent="#8b5cf6"
+          accent="var(--color-primary)"
         />
       </div>
 
-      <Card glow className="overflow-hidden pt-5">
+      <Card className="overflow-hidden pt-5">
         <DealTable source={deals} />
       </Card>
     </PageShell>
@@ -67,7 +67,7 @@ function Stat({
   accent?: string;
 }) {
   return (
-    <div className="rounded-[14px] border border-line bg-[linear-gradient(180deg,#ffffff06,#ffffff02)] px-4 py-3.5 backdrop-blur-xl">
+    <div className="rounded-[14px] border border-line bg-surface px-4 py-3.5 ">
       <p className="text-[11.5px] font-medium text-fg-muted">{label}</p>
       <p
         className="num mt-2 text-[21px] font-semibold leading-none tracking-[-0.03em]"

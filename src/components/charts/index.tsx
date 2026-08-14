@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import {
@@ -19,8 +19,8 @@ import {
 } from "recharts";
 
 const axis = {
-  stroke: "#ffffff14",
-  tick: { fill: "#6b7280", fontSize: 11 },
+  stroke: "var(--color-line)",
+  tick: { fill: "var(--color-fg-subtle)", fontSize: 11 },
   tickLine: false,
   axisLine: false,
 };
@@ -38,7 +38,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-[10px] border border-line-strong bg-elevated/95 px-3 py-2 shadow-[0_20px_40px_-20px_#000] backdrop-blur-xl">
+    <div className="rounded border border-line-strong bg-elevated px-3 py-2 shadow-lg">
       {label && (
         <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
           {label}
@@ -49,7 +49,7 @@ function ChartTooltip({
           <div key={p.name} className="flex items-center gap-2 text-[12px]">
             <span
               className="h-1.5 w-1.5 rounded-full"
-              style={{ background: p.color ?? p.stroke ?? "#8b5cf6" }}
+              style={{ background: p.color ?? p.stroke ?? "var(--color-primary)" }}
             />
             <span className="text-fg-muted">{p.name}</span>
             <span className="num ml-auto font-medium text-fg">
@@ -82,16 +82,16 @@ export function AreaTrend<T extends object>({
         <defs>
           {series.map((s, i) => (
             <linearGradient key={s.key} id={`${id}-${i}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity={0.32} />
+              <stop offset="0%" stopColor={s.color} stopOpacity={0.18} />
               <stop offset="100%" stopColor={s.color} stopOpacity={0} />
             </linearGradient>
           ))}
         </defs>
-        <CartesianGrid stroke="#ffffff0a" vertical={false} />
+        <CartesianGrid stroke="var(--color-line)" vertical={false} />
         <XAxis dataKey={xKey} {...axis} interval="preserveStartEnd" minTickGap={24} />
         <YAxis {...axis} width={52} />
         <Tooltip
-          cursor={{ stroke: "#ffffff22", strokeWidth: 1 }}
+          cursor={{ stroke: "var(--color-line-strong)", strokeWidth: 1 }}
           content={<ChartTooltip formatter={formatter} />}
         />
         {series.map((s, i) => (
@@ -136,7 +136,7 @@ export function Bars<T extends object>({
         margin={{ top: 6, right: 10, left: vertical ? 8 : -18, bottom: 0 }}
         barCategoryGap={vertical ? "24%" : "34%"}
       >
-        <CartesianGrid stroke="#ffffff0a" vertical={vertical} horizontal={!vertical} />
+        <CartesianGrid stroke="var(--color-line)" vertical={vertical} horizontal={!vertical} />
         {vertical ? (
           <>
             <XAxis type="number" {...axis} />
@@ -149,7 +149,7 @@ export function Bars<T extends object>({
           </>
         )}
         <Tooltip
-          cursor={{ fill: "#ffffff08" }}
+          cursor={{ fill: "var(--color-surface-2)" }}
           content={<ChartTooltip formatter={formatter} />}
         />
         {series.map((s) => (
@@ -158,7 +158,7 @@ export function Bars<T extends object>({
             dataKey={s.key}
             name={s.name}
             fill={s.color}
-            radius={vertical ? [0, 5, 5, 0] : [5, 5, 0, 0]}
+            radius={vertical ? [0, 3, 3, 0] : [3, 3, 0, 0]}
             maxBarSize={vertical ? 16 : 30}
           />
         ))}
@@ -210,7 +210,7 @@ export function Donut({
 
 export function Sparkline({
   data,
-  color = "#8b5cf6",
+  color = "var(--color-primary)",
   height = 36,
 }: {
   data: number[];
@@ -233,4 +233,3 @@ export function Sparkline({
     </ResponsiveContainer>
   );
 }
-

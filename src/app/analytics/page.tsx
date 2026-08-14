@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      <Card glow className="mb-5">
+      <Card className="mb-5">
         <CardHeader
           title="Receita e cliques"
           subtitle={
@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
           action={
             <div className="flex items-center gap-3 text-[11px]">
               <Legend color="#34d399" label="Receita" />
-              <Legend color="#22d3ee" label="Cliques" />
+              <Legend color="var(--color-primary)" label="Cliques" />
             </div>
           }
         />
@@ -97,11 +97,11 @@ export default function AnalyticsPage() {
               range === "24h"
                 ? [
                     { key: "receita", name: "Receita", color: "#34d399" },
-                    { key: "cliques", name: "Cliques", color: "#22d3ee" },
+                    { key: "cliques", name: "Cliques", color: "var(--color-primary)" },
                   ]
                 : [
                     { key: "receita", name: "Receita", color: "#34d399" },
-                    { key: "cliques", name: "Cliques", color: "#22d3ee" },
+                    { key: "cliques", name: "Cliques", color: "var(--color-primary)" },
                   ]
             }
           />
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
               xKey="day"
               height={196}
               formatter={(v) => pct(v)}
-              series={[{ key: "conversao", name: "Conversão", color: "#a78bfa" }]}
+              series={[{ key: "conversao", name: "Conversão", color: "var(--color-primary)" }]}
             />
           </CardBody>
         </Card>
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
               data={last30Days.slice(-14)}
               xKey="day"
               height={196}
-              series={[{ key: "publicadas", name: "Publicações", color: "#ec4899" }]}
+              series={[{ key: "publicadas", name: "Publicações", color: "var(--color-danger)" }]}
             />
           </CardBody>
         </Card>
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
               xKey="name"
               formatter={(v) => pct(v)}
               data={categories.map((c) => ({ name: c.name, ctr: c.ctr }))}
-              series={[{ key: "ctr", name: "CTR", color: "#22d3ee" }]}
+              series={[{ key: "ctr", name: "CTR", color: "var(--color-primary)" }]}
             />
           </CardBody>
         </Card>
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
                       {int(d.conversions ?? 0)}
                     </td>
                     <td className="pr-4">
-                      <Badge tone="violet">
+                      <Badge tone="primary">
                         {pct(((d.conversions ?? 0) / (d.clicks ?? 1)) * 100)}
                       </Badge>
                     </td>
@@ -236,7 +236,7 @@ function Big({
   delta: number;
 }) {
   return (
-    <div className="rounded-[16px] border border-line bg-[linear-gradient(180deg,#ffffff07,#ffffff02)] p-5 backdrop-blur-xl">
+    <div className="rounded-[16px] border border-line bg-surface p-5 ">
       <div className="flex items-center justify-between">
         <p className="text-[12px] font-medium text-fg-muted">{label}</p>
         <Badge tone={delta >= 0 ? "ok" : "danger"}>

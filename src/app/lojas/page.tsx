@@ -100,7 +100,7 @@ export default function LojasPage() {
 
       {loading && realStores.length === 0 ? (
         <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-fg-subtle">
-          <RefreshCw className="h-8 w-8 animate-spin text-violet-soft" />
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
           <span className="text-[13.5px]">Carregando lojas...</span>
         </div>
       ) : (
@@ -111,7 +111,7 @@ export default function LojasPage() {
               id: store.id,
               name: store.name,
               short: store.name.substring(0, 2).toUpperCase(),
-              accent: store.accentColor || "#8b5cf6",
+              accent: store.accentColor || "var(--color-primary)",
               status: store.status === "ACTIVE" ? "online" : 
                       store.status === "DEGRADED" ? "degradado" : 
                       store.status === "OFFLINE" ? "offline" : "pausado",
@@ -135,7 +135,7 @@ export default function LojasPage() {
                 <motion.div
                   whileHover={{ y: -3 }}
                   transition={{ type: "spring", stiffness: 360, damping: 26 }}
-                  className="group relative h-full overflow-hidden rounded-[18px] border border-line bg-[linear-gradient(180deg,#ffffff07,#ffffff02)] backdrop-blur-xl transition-colors duration-200 hover:border-white/[0.13]"
+                  className="group relative h-full overflow-hidden rounded-[18px] border border-line bg-surface  transition-colors duration-200 hover:border-white/[0.13]"
                 >
                   <span
                     className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-[0.16] blur-3xl transition-opacity duration-300 group-hover:opacity-25"
@@ -229,7 +229,7 @@ export default function LojasPage() {
                       Excluir
                     </Button>
                     <Tooltip content="Interface padrão StoreConnector">
-                      <Badge tone="violet" className="ml-auto">
+                      <Badge tone="primary" className="ml-auto">
                         <Plug className="h-3 w-3" /> v2
                       </Badge>
                     </Tooltip>
@@ -246,11 +246,11 @@ export default function LojasPage() {
               className="group flex h-full min-h-[300px] w-full flex-col items-center justify-center gap-3 rounded-[18px] border border-dashed border-line-strong bg-white/[0.012] p-8 text-center transition-colors duration-200 hover:border-violet/40 hover:bg-violet/[0.04]"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-[13px] border border-line-strong bg-white/[0.04] transition-colors group-hover:border-violet/40 group-hover:bg-violet/10">
-                <Plus className="h-5 w-5 text-fg-subtle transition-colors group-hover:text-violet-soft" strokeWidth={2} />
+                <Plus className="h-5 w-5 text-fg-subtle transition-colors group-hover:text-primary" strokeWidth={2} />
               </span>
               <span className="text-[13.5px] font-medium text-fg">Adicionar conector</span>
               <span className="max-w-[260px] text-[12px] leading-relaxed text-fg-subtle">
-                Implemente a interface <code className="font-mono text-violet-soft">StoreConnector</code> e
+                Implemente a interface <code className="font-mono text-primary">StoreConnector</code> e
                 a loja passa a participar de todos os ciclos automaticamente.
               </span>
             </button>
