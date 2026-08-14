@@ -70,7 +70,7 @@ export class OAuthService {
     }
 
     const state = randomBytes(24).toString("base64url");
-    const pkce = input.usePkce ? createPkce() : undefined;
+    const pkce = input.usePkce !== false ? createPkce() : undefined;
     const redirectUri = this.redirectUri(input.origin);
 
     pending.set(state, {
