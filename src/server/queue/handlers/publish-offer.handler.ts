@@ -1,20 +1,9 @@
 import { createLogger } from "@/server/core/logger";
 import { telegramService } from "@/server/services/telegram.service";
+import { whatsappService } from "@/server/services/whatsapp.service";
 import type { HandlerDefinition, JobContext } from "@/server/queue/types";
 
 const log = createLogger("handler.publish-offer");
-
-/**
- * Handler de publicação de oferta.
- *
- * Chamado quando uma oferta é aprovada (pela IA ou manualmente). O Telegram
- * service:
- *   1. Identifica o canal de destino (por categoria)
- *   2. Verifica throttling (limite/hora, limite/dia, janela)
- *   3. Renderiza o template de mensagem
- *   4. Envia pelo provider (mock ou bot real)
- *   5. Registra a mensagem e atualiza a oferta para PUBLISHED
- */
 
 interface PublishOfferPayload {
   offerId: string;
@@ -29,22 +18,48 @@ export const publishOfferHandler: HandlerDefinition<PublishOfferPayload> = {
   async handler(payload, _ctx: JobContext) {
     const { offerId } = payload;
 
-    const result = await telegramService.publishOffer(offerId);
+    // Dispara a publicação para o Telegram e o WhatsApp em paralelo
+    const [telegramResult, whatsappResult] = await Promise.all([
+      telegramService.publishOffer(offerId).catch((err) => ({
+        success: false,
+        messageId: undefined as string | undefined,
+        reason: err instanceof Error ? err.message : "Erro desconhecido no Telegram",
+      })),
+      whatsappService.publishOffer(offerId).catch((err) => ({
+        success: false,
+        reason: err instanceof Error ? err.message : "Erro desconhecido no WhatsApp",
+      })),
+    ]);
 
-    if (result.success) {
+    if (telegramResult.success || whatsappResult.success) {
+      const details = [];
+      if (telegramResult.success) details.push(`Telegram (${telegramResult.messageId})`);
+      if (whatsappResult.success) details.push("WhatsApp");
+
       return {
-        message: `Oferta ${offerId} publicada com sucesso`,
-        data: { messageId: result.messageId },
+        message: `Oferta ${offerId} publicada no(s) canal(is): ${details.join(", ")}`,
       };
     }
 
-    // Se falhou por throttling, é retryable (atraso ajuda)
-    if (result.reason?.includes("Limite") || result.reason?.includes("janela")) {
-      log.info("Publicação adiada por throttle", { offerId, reason: result.reason });
-      return { message: `Adiada: ${result.reason}` };
+    // Se ambos falharam e um deles foi por throttling, avisa
+    const throttleReason =
+      (telegramResult.reason?.includes("Limite") || telegramResult.reason?.includes("janela")
+        ? telegramResult.reason
+        : null) ||
+      (whatsappResult.reason?.includes("Limite") || whatsappResult.reason?.includes("janela")
+        ? whatsappResult.reason
+        : null);
+
+    if (throttleReason) {
+      log.info("Publicação adiada por throttle", { offerId, reason: throttleReason });
+      return { message: `Adiada: ${throttleReason}` };
     }
 
-    // Outros erros: lança para que o worker aplique retry
-    throw new Error(result.reason ?? "Falha na publicação");
+    // Lança erro geral se tudo falhar
+    throw new Error(
+      `Falha na publicação geral. Telegram: ${telegramResult.reason ?? "sucesso"}. WhatsApp: ${
+        whatsappResult.reason ?? "sucesso"
+      }`,
+    );
   },
 };

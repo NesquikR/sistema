@@ -6,40 +6,150 @@ import {
   Clock3,
   Database,
   Link2,
+  MessageSquare,
   Percent,
   Save,
   Send,
   Sparkles,
   Timer,
+  RefreshCw,
 } from "lucide-react";
 import { PageShell, PageTitle } from "@/components/layout/page-shell";
 import { Card, CardBody, CardHeader, Divider } from "@/components/ui/card";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Switch } from "@/components/ui/controls";
-import { categories } from "@/data/categories";
-import { channels } from "@/data/logs";
-import { stores } from "@/data/stores";
-import { compact } from "@/lib/utils";
+import { categories as defaultCategories } from "@/data/categories";
 
 const sections = [
   { id: "telegram", label: "Telegram", icon: Send },
+  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "busca", label: "Intervalo de busca", icon: Timer },
   { id: "categorias", label: "Categorias", icon: Sparkles },
   { id: "desconto", label: "Desconto mínimo", icon: Percent },
-  { id: "horarios", label: "Horários", icon: Clock3 },
-  { id: "afiliado", label: "Links de afiliado", icon: Link2 },
   { id: "ia", label: "IA", icon: Bot },
-  { id: "banco", label: "Banco de dados", icon: Database },
 ];
 
 export default function ConfiguracoesPage() {
   const [active, setActive] = React.useState("telegram");
-  const [minDiscount, setMinDiscount] = React.useState(35);
-  const [autoPublish, setAutoPublish] = React.useState(true);
-  const [requireApproval, setRequireApproval] = React.useState(true);
-  const [interval, setIntervalMinutes] = React.useState("15");
-  const [cats, setCats] = React.useState(categories);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+
+  // Estados locais das configurações (mapeados para as chaves do Firestore)
+  const [configs, setConfigs] = React.useState({
+    telegram_bot_token: "",
+    telegram_bot_username: "",
+    whatsapp_active: false,
+    whatsapp_gateway_url: "",
+    whatsapp_group_id: "",
+    whatsapp_token: "",
+    scheduler_interval_minutes: "15",
+    min_discount_global: 35,
+    ai_scorer_model: "rules",
+    ai_min_publish_score: 85,
+    ai_min_keep_score: 50,
+    ai_validate_price_history: true,
+    ai_generate_post_text: true,
+    categories_config: defaultCategories,
+  });
+
+  // Carrega as configurações da API do Firestore
+  const fetchSettings = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/v1/settings");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const loaded: Record<string, any> = {};
+        data.forEach((s) => {
+          loaded[s.key] = s.value;
+        });
+
+        setConfigs((prev) => ({
+          ...prev,
+          telegram_bot_token: loaded.telegram_bot_token ?? "",
+          telegram_bot_username: loaded.telegram_bot_username ?? "",
+          whatsapp_active: loaded.whatsapp_active ?? false,
+          whatsapp_gateway_url: loaded.whatsapp_gateway_url ?? "",
+          whatsapp_group_id: loaded.whatsapp_group_id ?? "",
+          whatsapp_token: loaded.whatsapp_token ?? "",
+          scheduler_interval_minutes: String(loaded.scheduler_interval_minutes ?? "15"),
+          min_discount_global: Number(loaded.min_discount_global ?? 35),
+          ai_scorer_model: loaded.ai_scorer_model ?? "rules",
+          ai_min_publish_score: Number(loaded.ai_min_publish_score ?? 85),
+          ai_min_keep_score: Number(loaded.ai_min_keep_score ?? 50),
+          ai_validate_price_history: loaded.ai_validate_price_history ?? true,
+          ai_generate_post_text: loaded.ai_generate_post_text ?? true,
+          categories_config: loaded.categories_config ?? defaultCategories,
+        }));
+      }
+    } catch (e) {
+      console.error("Erro ao carregar configurações:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // Atualiza um campo de configuração no estado local
+  const handleChange = (key: string, value: any) => {
+    setConfigs((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Salva as alterações enviando requisições PUT para a API
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const keysToSave = Object.keys(configs);
+      for (const key of keysToSave) {
+        let value = (configs as any)[key];
+        
+        // Conversão de tipos para manter consistência no Firestore
+        if (key === "min_discount_global" || key === "ai_min_publish_score" || key === "ai_min_keep_score") {
+          value = Number(value);
+        } else if (key === "whatsapp_active" || key === "ai_validate_price_history" || key === "ai_generate_post_text") {
+          value = Boolean(value);
+        }
+
+        const valueType = 
+          typeof value === "boolean" ? "BOOLEAN" :
+          typeof value === "number" ? "NUMBER" :
+          typeof value === "object" ? "JSON" : "STRING";
+
+        await fetch("/api/v1/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key,
+            value,
+            valueType,
+            scope: "GLOBAL",
+            scopeId: "",
+          }),
+        });
+      }
+      alert("Configurações salvas com sucesso!");
+    } catch (e) {
+      console.error("Erro ao salvar configurações:", e);
+      alert("Falha ao salvar as configurações.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <PageShell>
+        <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-fg-subtle">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-[13.5px]">Carregando configurações...</span>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -48,10 +158,12 @@ export default function ConfiguracoesPage() {
         subtitle="Parâmetros operacionais do motor. As alterações passam a valer no próximo ciclo."
         actions={
           <>
-            <Button variant="ghost" size="sm">Descartar</Button>
-            <Button variant="primary" size="sm">
+            <Button variant="ghost" size="sm" onClick={fetchSettings} disabled={saving}>
+              Descartar
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
               <Save className="h-3.5 w-3.5" strokeWidth={2.2} />
-              Salvar alterações
+              {saving ? "Salvando..." : "Salvar alterações"}
             </Button>
           </>
         }
@@ -69,10 +181,10 @@ export default function ConfiguracoesPage() {
                   <button
                     onClick={() => setActive(s.id)}
                     className={
-                      "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] transition-colors duration-150 " +
+                      "flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors duration-150 " +
                       (isActive
-                        ? "border border-line-strong bg-white/[0.06] text-fg"
-                        : "border border-transparent text-fg-muted hover:bg-white/[0.04] hover:text-fg")
+                        ? "border border-line-strong bg-surface-2 text-fg"
+                        : "border border-transparent text-fg-muted hover:bg-surface-2 hover:text-fg")
                     }
                   >
                     <Icon
@@ -91,247 +203,251 @@ export default function ConfiguracoesPage() {
 
         <div className="space-y-3.5">
           {/* Telegram */}
-          <Card>
-            <CardHeader
-              title="Telegram"
-              subtitle="Credenciais do bot e canais de destino"
-              action={
-                <Badge tone="ok">
-                  <StatusDot tone="ok" /> conectado
-                </Badge>
-              }
-            />
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Token do bot" hint="Armazenado criptografado no servidor">
-                  <Input type="password" defaultValue="7412998301:AAH_xxxxxxxxxxxxxxxxxxxxxxxx" />
-                </Field>
-                <Field label="Nome do bot" hint="Exibido como remetente">
-                  <Input defaultValue="@beautybot_oficial" />
-                </Field>
-              </div>
+          {active === "telegram" && (
+            <Card>
+              <CardHeader
+                title="Telegram"
+                subtitle="Credenciais do bot do Telegram"
+                action={
+                  <Badge tone={configs.telegram_bot_token ? "ok" : "neutral"}>
+                    <StatusDot tone={configs.telegram_bot_token ? "ok" : "neutral"} />
+                    {configs.telegram_bot_token ? "configurado" : "desconectado"}
+                  </Badge>
+                }
+              />
+              <CardBody className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Token do bot" hint="Token fornecido pelo @BotFather">
+                    <Input
+                      type="password"
+                      value={configs.telegram_bot_token}
+                      placeholder="Token do Bot Telegram"
+                      onChange={(e) => handleChange("telegram_bot_token", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Nome do bot" hint="Exibido como remetente">
+                    <Input
+                      value={configs.telegram_bot_username}
+                      placeholder="Ex: @beautybot_oficial"
+                      onChange={(e) => handleChange("telegram_bot_username", e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
-              <Divider />
+          {/* WhatsApp */}
+          {active === "whatsapp" && (
+            <Card>
+              <CardHeader
+                title="WhatsApp"
+                subtitle="Disparo de promoções direto para Grupos do WhatsApp via API Gateway"
+                action={
+                  <Badge tone={configs.whatsapp_active ? "ok" : "neutral"}>
+                    <StatusDot tone={configs.whatsapp_active ? "ok" : "neutral"} />
+                    {configs.whatsapp_active ? "ativo" : "inativo"}
+                  </Badge>
+                }
+              />
+              <CardBody className="space-y-4">
+                <div className="space-y-4">
+                  <Toggle
+                    label="Ativar WhatsApp"
+                    hint="Enviar as ofertas aprovadas para o seu grupo do WhatsApp em tempo real."
+                    checked={configs.whatsapp_active}
+                    onChange={(v) => handleChange("whatsapp_active", v)}
+                  />
 
-              <div className="space-y-2">
-                {channels.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-surface-2 px-3.5 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium text-fg">{c.name}</p>
-                      <p className="mt-0.5 font-mono text-[11.5px] text-fg-subtle">{c.handle}</p>
-                    </div>
-                    <Badge tone="neutral" className="ml-2">
-                      {compact(c.members)} membros
-                    </Badge>
-                    <Switch checked={c.active} onChange={() => {}} label={c.name} />
+                  <Divider />
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field
+                      label="URL do Gateway API"
+                      hint="Endpoint da Z-API ou Evolution API para envio de texto."
+                    >
+                      <Input
+                        value={configs.whatsapp_gateway_url}
+                        placeholder="Ex: https://api.z-api.io/instances/SUA_INSTANCIA/token/SEU_TOKEN/send-text"
+                        onChange={(e) => handleChange("whatsapp_gateway_url", e.target.value)}
+                      />
+                    </Field>
+                    <Field
+                      label="ID do Grupo de Destino"
+                      hint="Identificador do grupo (Z-API/Evolution extraem isso do link do grupo)."
+                    >
+                      <Input
+                        value={configs.whatsapp_group_id}
+                        placeholder="Ex: 12036323483984@g.us"
+                        onChange={(e) => handleChange("whatsapp_group_id", e.target.value)}
+                      />
+                    </Field>
                   </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
+
+                  <Field
+                    label="Token de Autorização (Opcional)"
+                    hint="Chave 'apikey' da Evolution API ou token de segurança extra do gateway."
+                  >
+                    <Input
+                      type="password"
+                      value={configs.whatsapp_token}
+                      placeholder="Token ou apikey"
+                      onChange={(e) => handleChange("whatsapp_token", e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {/* Busca e agendamento */}
-          <Card>
-            <CardHeader
-              title="Intervalo de busca e horários"
-              subtitle="Frequência dos ciclos e janelas em que o bot pode publicar"
-            />
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Intervalo entre ciclos" hint="Expressão cron gerada automaticamente">
-                  <Select
-                    value={interval}
-                    onChange={(e) => setIntervalMinutes(e.target.value)}
-                    className="w-full"
-                  >
-                    <option value="5">A cada 5 minutos</option>
-                    <option value="15">A cada 15 minutos</option>
-                    <option value="30">A cada 30 minutos</option>
-                    <option value="60">A cada hora</option>
-                  </Select>
-                </Field>
-                <Field label="Janela de publicação" hint="Fora dela as ofertas ficam agendadas">
-                  <div className="flex items-center gap-2">
-                    <Input type="time" defaultValue="08:00" />
-                    <span className="text-fg-subtle">—</span>
-                    <Input type="time" defaultValue="22:00" />
-                  </div>
-                </Field>
-                <Field label="Máximo de publicações por hora" hint="Evita saturar os canais">
-                  <Input type="number" defaultValue={6} />
-                </Field>
-              </div>
-
-              <Divider />
-
-              <Toggle
-                label="Publicação automática"
-                hint="Ofertas com score acima do limiar são publicadas sem intervenção."
-                checked={autoPublish}
-                onChange={setAutoPublish}
+          {active === "busca" && (
+            <Card>
+              <CardHeader
+                title="Intervalo de busca e agendamento"
+                subtitle="Frequência dos ciclos de mineração"
               />
-              <Toggle
-                label="Exigir aprovação manual abaixo do limiar"
-                hint="Ofertas com score entre 50 e 85 vão para a fila da Central de Operações."
-                checked={requireApproval}
-                onChange={setRequireApproval}
-              />
-            </CardBody>
-          </Card>
-
-          {/* Desconto e categorias */}
-          <Card>
-            <CardHeader
-              title="Desconto mínimo e categorias"
-              subtitle="Limiar global e ajustes por nicho"
-            />
-            <CardBody className="space-y-5">
-              <div>
-                <div className="flex items-baseline justify-between">
-                  <p className="text-[13px] font-medium text-fg">Desconto mínimo global</p>
-                  <span className="num text-[17px] font-semibold text-primary">
-                    {minDiscount}%
-                  </span>
+              <CardBody className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Intervalo entre ciclos" hint="Período de execução dos conectores na nuvem">
+                    <Select
+                      value={configs.scheduler_interval_minutes}
+                      onChange={(e) => handleChange("scheduler_interval_minutes", e.target.value)}
+                      className="w-full"
+                    >
+                      <option value="5">A cada 5 minutos</option>
+                      <option value="15">A cada 15 minutos</option>
+                      <option value="30">A cada 30 minutos</option>
+                      <option value="60">A cada hora</option>
+                    </Select>
+                  </Field>
                 </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={80}
-                  value={minDiscount}
-                  onChange={(e) => setMinDiscount(Number(e.target.value))}
-                  className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-violet"
-                  style={{
-                    background: `linear-gradient(90deg,var(--color-primary) ${((minDiscount - 10) / 70) * 100}%, #ffffff14 ${((minDiscount - 10) / 70) * 100}%)`,
-                  }}
-                />
-                <p className="mt-2 text-[11.5px] text-fg-subtle">
-                  Ofertas abaixo desse patamar são descartadas antes de chegar à IA.
-                </p>
-              </div>
+              </CardBody>
+            </Card>
+          )}
 
-              <Divider />
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {cats.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-3 rounded-[12px] border border-line bg-surface-2 px-3.5 py-2.5"
-                  >
-                    <span className="text-[15px]">{c.emoji}</span>
-                    <span className="text-[12.5px] font-medium text-fg">{c.name}</span>
-                    <span className="num ml-auto text-[12px] text-fg-subtle">
-                      mín. {c.minDiscount}%
+          {/* Desconto mínimo */}
+          {active === "desconto" && (
+            <Card>
+              <CardHeader
+                title="Desconto mínimo global"
+                subtitle="Limiar global para ofertas"
+              />
+              <CardBody className="space-y-5">
+                <div>
+                  <div className="flex items-baseline justify-between">
+                    <p className="text-[13px] font-medium text-fg">Desconto mínimo global</p>
+                    <span className="num text-[17px] font-semibold text-primary">
+                      {configs.min_discount_global}%
                     </span>
-                    <Switch
-                      checked={c.active}
-                      onChange={(v) =>
-                        setCats((prev) =>
-                          prev.map((x) => (x.id === c.id ? { ...x, active: v } : x)),
-                        )
-                      }
-                      label={c.name}
-                    />
                   </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
+                  <input
+                    type="range"
+                    min={10}
+                    max={80}
+                    value={configs.min_discount_global}
+                    onChange={(e) => handleChange("min_discount_global", Number(e.target.value))}
+                    className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-2 accent-primary"
+                    style={{
+                      background: `linear-gradient(90deg, var(--color-primary) ${
+                        ((configs.min_discount_global - 10) / 70) * 100
+                      }%, var(--color-line) ${((configs.min_discount_global - 10) / 70) * 100}%)`,
+                    }}
+                  />
+                  <p className="mt-2 text-[11.5px] text-fg-subtle">
+                    Ofertas abaixo desse patamar são descartadas antes de chegar à IA.
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
-          {/* Afiliados */}
-          <Card>
-            <CardHeader
-              title="Links de afiliado"
-              subtitle="Identificadores usados na reescrita das URLs de cada loja"
-            />
-            <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {stores.map((s) => (
-                <Field key={s.id} label={s.name} hint={s.connector}>
-                  <Input defaultValue={`beautybot-${s.id}-01`} />
-                </Field>
-              ))}
-            </CardBody>
-          </Card>
+          {/* Categorias e nichos */}
+          {active === "categorias" && (
+            <Card>
+              <CardHeader
+                title="Categorias e nichos de mineração"
+                subtitle="Filtros e desconto mínimo específico de cada nicho"
+              />
+              <CardBody className="space-y-5">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {configs.categories_config.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-3 rounded border border-line bg-surface-2 px-3.5 py-2.5"
+                    >
+                      <span className="text-[15px]">{c.emoji}</span>
+                      <span className="text-[12.5px] font-medium text-fg">{c.name}</span>
+                      <span className="num ml-auto text-[12px] text-fg-subtle mr-2">
+                        mín. {c.minDiscount}%
+                      </span>
+                      <Switch
+                        checked={c.active}
+                        onChange={(v) => {
+                          const updated = configs.categories_config.map((x) =>
+                            x.id === c.id ? { ...x, active: v } : x
+                          );
+                          handleChange("categories_config", updated);
+                        }}
+                        label={c.name}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {/* IA */}
-          <Card>
-            <CardHeader title="Inteligência Artificial" subtitle="Modelo e limiares de decisão" />
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Modelo" hint="Usado na avaliação de cada oferta">
-                  <Select defaultValue="v4" className="w-full">
-                    <option value="v4">beautybot-scorer-v4</option>
-                    <option value="v3">beautybot-scorer-v3</option>
-                    <option value="rules">Somente regras (sem IA)</option>
-                  </Select>
-                </Field>
-                <Field label="Score mínimo para publicar" hint="Abaixo disso vai para a fila">
-                  <Input type="number" defaultValue={85} />
-                </Field>
-                <Field label="Score mínimo para manter" hint="Abaixo disso é descartada">
-                  <Input type="number" defaultValue={50} />
-                </Field>
-              </div>
-              <Toggle
-                label="Validar histórico de preços de 90 dias"
-                hint="Principal defesa contra promoções falsas com preço-âncora inflado."
-                checked
-                onChange={() => {}}
-              />
-              <Toggle
-                label="Gerar texto da publicação com IA"
-                hint="Caso desativado, o sistema usa o template padrão de mensagem."
-                checked
-                onChange={() => {}}
-              />
-            </CardBody>
-          </Card>
+          {active === "ia" && (
+            <Card>
+              <CardHeader title="Inteligência Artificial" subtitle="Modelo e limiares de decisão da IA" />
+              <CardBody className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Modelo" hint="Usado na avaliação de cada oferta">
+                    <Select
+                      value={configs.ai_scorer_model}
+                      onChange={(e) => handleChange("ai_scorer_model", e.target.value)}
+                      className="w-full"
+                    >
+                      <option value="rules">Somente regras (sem IA)</option>
+                      <option value="v3">beautybot-scorer-v3</option>
+                      <option value="v4">beautybot-scorer-v4 (Recomendado)</option>
+                    </Select>
+                  </Field>
+                  <Field label="Score mínimo para publicar" hint="Abaixo disso vai para a fila">
+                    <Input
+                      type="number"
+                      value={configs.ai_min_publish_score}
+                      onChange={(e) => handleChange("ai_min_publish_score", Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label="Score mínimo para manter" hint="Abaixo disso é descartada">
+                    <Input
+                      type="number"
+                      value={configs.ai_min_keep_score}
+                      onChange={(e) => handleChange("ai_min_keep_score", Number(e.target.value))}
+                    />
+                  </Field>
+                </div>
 
-          {/* Banco */}
-          <Card>
-            <CardHeader
-              title="Banco de dados"
-              subtitle="Conexão e política de retenção"
-              action={
-                <Badge tone="ok">
-                  <StatusDot tone="ok" /> 4 ms
-                </Badge>
-              }
-            />
-            <CardBody className="space-y-4">
-              <Field label="String de conexão" hint="Somente leitura nesta tela">
-                <Input
-                  readOnly
-                  defaultValue="postgresql://beautybot@localhost:5432/beautybot"
-                  className="font-mono text-[12px] text-fg-muted"
+                <Divider />
+
+                <Toggle
+                  label="Validar histórico de preços de 90 dias"
+                  hint="Principal defesa contra promoções falsas com preço-âncora inflado."
+                  checked={configs.ai_validate_price_history}
+                  onChange={(v) => handleChange("ai_validate_price_history", v)}
                 />
-              </Field>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Retenção de ofertas" hint="Após o prazo, são arquivadas">
-                  <Select defaultValue="180" className="w-full">
-                    <option value="90">90 dias</option>
-                    <option value="180">180 dias</option>
-                    <option value="365">1 ano</option>
-                  </Select>
-                </Field>
-                <Field label="Retenção de logs" hint="Eventos de nível debug">
-                  <Select defaultValue="14" className="w-full">
-                    <option value="7">7 dias</option>
-                    <option value="14">14 dias</option>
-                    <option value="30">30 dias</option>
-                  </Select>
-                </Field>
-                <Field label="Backup automático" hint="Snapshot diário às 03h">
-                  <Select defaultValue="on" className="w-full">
-                    <option value="on">Ativado</option>
-                    <option value="off">Desativado</option>
-                  </Select>
-                </Field>
-              </div>
-            </CardBody>
-          </Card>
+                <Toggle
+                  label="Gerar texto da publicação com IA"
+                  hint="Caso desativado, o sistema usa o template padrão de mensagem."
+                  checked={configs.ai_generate_post_text}
+                  onChange={(v) => handleChange("ai_generate_post_text", v)}
+                />
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
     </PageShell>
@@ -351,7 +467,7 @@ function Field({
     <div>
       <label className="text-[12.5px] font-medium text-fg">{label}</label>
       <div className="mt-2">{children}</div>
-      {hint && <p className="mt-1.5 text-[11px] text-fg-subtle">{hint}</p>}
+      {hint && <p className="mt-1.5 text-[11.5px] text-fg-subtle">{hint}</p>}
     </div>
   );
 }
@@ -368,7 +484,7 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start gap-4 rounded-[12px] border border-line bg-surface-2 px-3.5 py-3">
+    <div className="flex items-start gap-4 rounded border border-line bg-surface-2 px-3.5 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[12.5px] font-medium text-fg">{label}</p>
         <p className="mt-1 text-[11.5px] leading-relaxed text-fg-subtle">{hint}</p>
