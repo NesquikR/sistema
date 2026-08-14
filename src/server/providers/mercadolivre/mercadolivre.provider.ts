@@ -153,7 +153,7 @@ export class MercadoLivreProvider implements StoreConnector {
         const offset = page * pageSize;
         const path =
           `/sites/${site}/search?q=${encodeURIComponent(term)}` +
-          `&limit=${pageSize}&offset=${offset}`;
+          `&limit=${pageSize}&offset=${offset}&official_store=all`;
 
         const data = await this.request<MeliSearchResponse>(ctx, path, options.signal);
         const items = data.results ?? [];
