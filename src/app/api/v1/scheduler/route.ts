@@ -18,9 +18,16 @@ const actionBody = z.discriminatedUnion("action", [
   z.object({ action: z.literal("tick") }),
 ]);
 
-/** GET /api/v1/scheduler — jobs com as próximas execuções previstas. */
-export const GET = withApiHandler(async () => {
+/** GET /api/v1/scheduler — jobs ou disparo rápido de tick via query. */
+export const GET = withApiHandler(async (request: NextRequest) => {
   await bootstrap("web");
+
+  const searchParams = new URL(request.url).searchParams;
+  if (searchParams.get("action") === "tick" || searchParams.get("tick") === "true") {
+    const dispatched = await scheduler.tick();
+    return ok({ status: "success", dispatched });
+  }
+
   const jobs = await schedulerRepository.findAll();
 
   return ok({
