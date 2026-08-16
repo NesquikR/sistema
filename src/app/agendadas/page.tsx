@@ -1,17 +1,19 @@
 "use client";
 
+import * as React from "react";
 import { motion } from "framer-motion";
-import { CalendarClock, Clock3, Pause, Play, Send, X } from "lucide-react";
+import { CalendarClock, Clock3, Pause, Play, Send, X, RefreshCw } from "lucide-react";
 import { PageShell, PageTitle } from "@/components/layout/page-shell";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/controls";
 import { DealThumb } from "@/components/deals/thumb";
-import { deals } from "@/data/deals";
 import { storeById } from "@/data/stores";
 import { categoryById } from "@/data/categories";
 import { clockOf, money } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { Modal } from "@/components/ui/modal";
 
 /** Janelas de publicação configuradas — refletem os picos de audiência. */
 const windows = [
@@ -22,12 +24,110 @@ const windows = [
 ];
 
 export default function AgendadasPage() {
-  const scheduled = deals
-    .filter((d) => d.status === "agendada")
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledFor!).getTime() - new Date(b.scheduledFor!).getTime(),
+  const { data: offers = [], isLoading, refetch } = useQuery({
+    queryKey: ["offers", "agendada"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/offers?status=agendada");
+      const json = await res.json();
+      return json.data?.items || [];
+    },
+  });
+
+  // Estados para o modal de Reagendamento
+  const [reschedulingDeal, setReschedulingDeal] = React.useState<any>(null);
+  const [newScheduleTime, setNewScheduleTime] = React.useState("");
+
+  const scheduled = React.useMemo(() => {
+    return [...offers].sort(
+      (a: any, b: any) =>
+        new Date(a.scheduledFor!).getTime() - new Date(b.scheduledFor!).getTime()
     );
+  }, [offers]);
+
+  // Ação: Publicar agora
+  const handlePublishNow = async (dealId: string) => {
+    try {
+      const res = await fetch(`/api/v1/offers/${dealId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "publicada" }),
+      });
+      if (res.ok) {
+        alert("Publicação disparada com sucesso! A oferta será enviada via fila.");
+        refetch();
+      } else {
+        alert("Falha ao publicar a oferta.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao enviar a requisição.");
+    }
+  };
+
+  // Ação: Cancelar agendamento
+  const handleCancel = async (dealId: string) => {
+    if (!confirm("Tem certeza que deseja cancelar esta oferta agendada?")) return;
+    try {
+      const res = await fetch(`/api/v1/offers/${dealId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ignorada" }),
+      });
+      if (res.ok) {
+        alert("Agendamento cancelado com sucesso!");
+        refetch();
+      } else {
+        alert("Falha ao cancelar a oferta.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao enviar a requisição.");
+    }
+  };
+
+  // Ação: Abrir modal de reagendamento
+  const handleOpenReschedule = (deal: any) => {
+    setReschedulingDeal(deal);
+    // Converte a data atual para formato compatível com datetime-local (YYYY-MM-DDThh:mm)
+    const date = deal.scheduledFor ? new Date(deal.scheduledFor) : new Date();
+    // Ajusta o timezone local para formatar a string ISO corretamente
+    const offset = date.getTimezoneOffset();
+    const adjustedDate = new Date(date.getTime() - offset * 60 * 1000);
+    setNewScheduleTime(adjustedDate.toISOString().slice(0, 16));
+  };
+
+  // Ação: Salvar novo reagendamento
+  const handleSaveReschedule = async () => {
+    if (!reschedulingDeal) return;
+    try {
+      const res = await fetch(`/api/v1/offers/${reschedulingDeal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledFor: new Date(newScheduleTime).toISOString() }),
+      });
+      if (res.ok) {
+        alert("Horário reagendado com sucesso!");
+        setReschedulingDeal(null);
+        refetch();
+      } else {
+        alert("Falha ao reagendar a oferta.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao enviar a requisição.");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-fg-subtle">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-[13.5px]">Carregando agendamentos...</span>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -36,13 +136,9 @@ export default function AgendadasPage() {
         subtitle="Fila de publicação futura. As ofertas são liberadas automaticamente dentro da janela escolhida."
         actions={
           <>
-            <Button variant="secondary" size="sm">
-              <Pause className="h-3.5 w-3.5" strokeWidth={2} />
-              Pausar fila
-            </Button>
-            <Button variant="primary" size="sm">
-              <Play className="h-3.5 w-3.5" strokeWidth={2.2} />
-              Publicar tudo agora
+            <Button variant="secondary" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} />
+              Atualizar
             </Button>
           </>
         }
@@ -93,7 +189,7 @@ export default function AgendadasPage() {
           <div className="relative">
             <span className="absolute bottom-4 left-[58px] top-4 w-px bg-surface" />
 
-            {scheduled.map((d, i) => (
+            {scheduled.map((d: any, i) => (
               <motion.div
                 key={d.id}
                 initial={{ opacity: 0, x: -10 }}
@@ -116,10 +212,10 @@ export default function AgendadasPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] font-medium text-fg">{d.title}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-fg-subtle">
-                        <span>{storeById[d.store].name}</span>
+                        <span>{storeById[d.store]?.name || d.store}</span>
                         <span className="h-2.5 w-px bg-line-strong" />
                         <span>
-                          {categoryById[d.category].emoji} {categoryById[d.category].name}
+                          {categoryById[d.category]?.emoji || "📦"} {categoryById[d.category]?.name || d.category}
                         </span>
                         <span className="h-2.5 w-px bg-line-strong" />
                         <span className="font-mono text-cyan">{d.channel}</span>
@@ -140,17 +236,17 @@ export default function AgendadasPage() {
 
                     <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                       <Tooltip content="Publicar imediatamente">
-                        <Button size="icon" variant="secondary" aria-label="Publicar agora">
+                        <Button size="icon" variant="secondary" aria-label="Publicar agora" onClick={() => handlePublishNow(d.id)}>
                           <Send className="h-3.5 w-3.5" strokeWidth={2} />
                         </Button>
                       </Tooltip>
                       <Tooltip content="Reagendar">
-                        <Button size="icon" variant="ghost" aria-label="Reagendar">
+                        <Button size="icon" variant="ghost" aria-label="Reagendar" onClick={() => handleOpenReschedule(d)}>
                           <CalendarClock className="h-3.5 w-3.5" strokeWidth={2} />
                         </Button>
                       </Tooltip>
                       <Tooltip content="Cancelar agendamento">
-                        <Button size="icon" variant="ghost" aria-label="Cancelar">
+                        <Button size="icon" variant="ghost" aria-label="Cancelar" onClick={() => handleCancel(d.id)}>
                           <X className="h-3.5 w-3.5" strokeWidth={2} />
                         </Button>
                       </Tooltip>
@@ -167,6 +263,35 @@ export default function AgendadasPage() {
           </div>
         </CardBody>
       </Card>
+
+      {/* Modal de Reagendamento */}
+      <Modal
+        open={!!reschedulingDeal}
+        onClose={() => setReschedulingDeal(null)}
+        title="Reagendar Oferta"
+        subtitle={`Escolha a nova data e horário de publicação para: ${reschedulingDeal?.title}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setReschedulingDeal(null)}>
+              Descartar
+            </Button>
+            <Button variant="primary" onClick={handleSaveReschedule}>
+              Confirmar
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <label className="text-[12.5px] font-medium text-fg">Nova Data e Hora de Publicação</label>
+          <input
+            type="datetime-local"
+            value={newScheduleTime}
+            onChange={(e) => setNewScheduleTime(e.target.value)}
+            className="w-full h-9 rounded border border-line-strong bg-surface-2 px-3 text-[13px] text-fg transition-colors duration-150 focus:border-primary focus:outline-none"
+          />
+        </div>
+      </Modal>
     </PageShell>
   );
 }
+

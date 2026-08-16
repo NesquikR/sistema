@@ -108,6 +108,58 @@ export class SettingService {
         reason: input.reason,
       });
 
+      if (input.key === "categories_config" && Array.isArray(input.value)) {
+        const categoriesList = input.value as any[];
+        
+        // 1. Marcar como deletadas as categorias do banco que não estão no novo JSON
+        const incomingSlugs = categoriesList.map(c => c.id);
+        await tx.category.updateMany({
+          where: {
+            slug: { notIn: incomingSlugs },
+            deletedAt: null
+          },
+          data: {
+            deletedAt: new Date(),
+            isActive: false
+          }
+        });
+
+        // 2. Upsert para cada categoria recebida
+        for (let i = 0; i < categoriesList.length; i++) {
+          const c = categoriesList[i];
+          const slug = c.id;
+          const name = c.name;
+          const emoji = c.emoji || null;
+          const accentColor = c.accent || null;
+          const minDiscountPercent = Number(c.minDiscount ?? 30);
+          const isActive = c.active !== false;
+
+          await tx.category.upsert({
+            where: { slug },
+            update: {
+              name,
+              emoji,
+              accentColor,
+              minDiscountPercent,
+              isActive,
+              deletedAt: null,
+              sortOrder: i,
+            },
+            create: {
+              slug,
+              name,
+              emoji,
+              accentColor,
+              minDiscountPercent,
+              isActive,
+              path: `/${slug}`,
+              depth: 0,
+              sortOrder: i,
+            }
+          });
+        }
+      }
+
       return saved;
     });
 

@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 
 const globalForFirebase = globalThis as unknown as {
   __beautybotFirebaseAdmin?: any;
+  __beautybotFirestore?: any;
 };
 
 function createFirebaseAdminApp() {
@@ -37,5 +38,19 @@ if (process.env.NODE_ENV !== "production") {
   globalForFirebase.__beautybotFirebaseAdmin = firebaseAdmin;
 }
 
-export const firestore = getFirestore(firebaseAdmin);
-firestore.settings({ ignoreUndefinedProperties: true });
+const initializeFirestore = () => {
+  const db = getFirestore(firebaseAdmin);
+  try {
+    db.settings({ ignoreUndefinedProperties: true });
+  } catch (e) {
+    // Ignora erro de settings já configurado
+  }
+  return db;
+};
+
+export const firestore = globalForFirebase.__beautybotFirestore ?? initializeFirestore();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForFirebase.__beautybotFirestore = firestore;
+}
+

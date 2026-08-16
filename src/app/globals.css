@@ -133,3 +133,10 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
+
+/* Correção para seletores (dropdowns) nativos em temas escuros/claros */
+select option {
+  background-color: var(--color-surface-2);
+  color: var(--color-fg);
+}
+

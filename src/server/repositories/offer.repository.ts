@@ -181,6 +181,7 @@ export class OfferRepository extends BaseRepository {
       rejectionReason?: string;
       rejectionNote?: string;
       affiliateLinkId?: string;
+      scheduledFor?: Date;
     } = {},
   ): Promise<Offer> {
     const current = await this.client.offer.findUniqueOrThrow({ where: { id } });
@@ -193,7 +194,7 @@ export class OfferRepository extends BaseRepository {
       case "APPROVED": timestampFields.approvedAt = now; break;
       case "PUBLISHED": timestampFields.publishedAt = now; break;
       case "REJECTED": timestampFields.rejectedAt = now; break;
-      case "SCHEDULED": timestampFields.scheduledFor = now; break;
+      case "SCHEDULED": timestampFields.scheduledFor = opts.scheduledFor ?? now; break;
     }
 
     const updated = await this.client.offer.update({

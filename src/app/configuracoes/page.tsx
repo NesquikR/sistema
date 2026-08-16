@@ -13,6 +13,8 @@ import {
   Sparkles,
   Timer,
   RefreshCw,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { PageShell, PageTitle } from "@/components/layout/page-shell";
 import { Card, CardBody, CardHeader, Divider } from "@/components/ui/card";
@@ -53,12 +55,67 @@ export default function ConfiguracoesPage() {
     categories_config: defaultCategories,
   });
 
+  // Estado para a categoria selecionada na aba Desconto Mínimo
+  const [selectedDiscountCat, setSelectedDiscountCat] = React.useState("global");
+
+  // Estados para o formulário de criação de categorias
+  const [newCatName, setNewCatName] = React.useState("");
+  const [newCatEmoji, setNewCatEmoji] = React.useState("🧴");
+  const [newCatColor, setNewCatColor] = React.useState("#8b5cf6");
+  const [newCatMinDiscount, setNewCatMinDiscount] = React.useState(35);
+
+  const handleAddCategory = () => {
+    if (!newCatName.trim()) {
+      alert("Por favor, digite o nome da categoria.");
+      return;
+    }
+    const id = newCatName
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+      .replace(/\s+/g, "-") // Troca espaços por hífens
+      .replace(/[^\w-]/g, ""); // Remove caracteres especiais
+
+    if (configs.categories_config.some((c) => c.id === id)) {
+      alert("Já existe uma categoria com este ID/nome.");
+      return;
+    }
+
+    const newCat = {
+      id,
+      name: newCatName.trim(),
+      emoji: newCatEmoji,
+      accent: newCatColor,
+      active: true,
+      minDiscount: newCatMinDiscount,
+      deals30d: 0,
+      revenue30d: 0,
+      ctr: 0,
+      conversion: 0,
+      share: 0,
+      trend: 0,
+    };
+
+    handleChange("categories_config", [...configs.categories_config, newCat]);
+    setNewCatName("");
+    alert(`Categoria "${newCat.name}" criada no painel! Clique em "Salvar alterações" no topo para gravar no banco.`);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir esta categoria?")) {
+      const updated = configs.categories_config.filter((c) => c.id !== id);
+      handleChange("categories_config", updated);
+    }
+  };
+
   // Carrega as configurações da API do Firestore
   const fetchSettings = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/v1/settings");
-      const data = await res.json();
+      const json = await res.json();
+      const data = json.data;
       if (Array.isArray(data)) {
         const loaded: Record<string, any> = {};
         data.forEach((s) => {
@@ -330,72 +387,226 @@ export default function ConfiguracoesPage() {
           {active === "desconto" && (
             <Card>
               <CardHeader
-                title="Desconto mínimo global"
-                subtitle="Limiar global para ofertas"
+                title="Configurar desconto mínimo"
+                subtitle="Escolha a categoria e configure o desconto mínimo necessário para capturar ofertas"
               />
               <CardBody className="space-y-5">
-                <div>
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-[13px] font-medium text-fg">Desconto mínimo global</p>
-                    <span className="num text-[17px] font-semibold text-primary">
-                      {configs.min_discount_global}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={10}
-                    max={80}
-                    value={configs.min_discount_global}
-                    onChange={(e) => handleChange("min_discount_global", Number(e.target.value))}
-                    className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-2 accent-primary"
-                    style={{
-                      background: `linear-gradient(90deg, var(--color-primary) ${
-                        ((configs.min_discount_global - 10) / 70) * 100
-                      }%, var(--color-line) ${((configs.min_discount_global - 10) / 70) * 100}%)`,
-                    }}
-                  />
-                  <p className="mt-2 text-[11.5px] text-fg-subtle">
-                    Ofertas abaixo desse patamar são descartadas antes de chegar à IA.
-                  </p>
+                <div className="w-full sm:w-[260px] mb-4">
+                  <Field label="Selecionar escopo" hint="Selecione se deseja configurar o desconto global ou por categoria">
+                    <Select
+                      value={selectedDiscountCat}
+                      onChange={(e) => setSelectedDiscountCat(e.target.value)}
+                      className="w-full"
+                    >
+                      <option value="global">Todos (Desconto Global)</option>
+                      {configs.categories_config.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.emoji} {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
+
+                <Divider />
+
+                {selectedDiscountCat === "global" ? (
+                  <div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-[13px] font-medium text-fg">Desconto mínimo global</p>
+                      <span className="num text-[17px] font-semibold text-primary">
+                        {configs.min_discount_global}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={80}
+                      value={configs.min_discount_global}
+                      onChange={(e) => handleChange("min_discount_global", Number(e.target.value))}
+                      className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-2 accent-primary"
+                      style={{
+                        background: `linear-gradient(90deg, var(--color-primary) ${
+                          ((configs.min_discount_global - 10) / 70) * 100
+                        }%, var(--color-line) ${((configs.min_discount_global - 10) / 70) * 100}%)`,
+                      }}
+                    />
+                    <p className="mt-2 text-[11.5px] text-fg-subtle">
+                      Ofertas abaixo desse patamar global são descartadas antes de chegar à IA.
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    const catIndex = configs.categories_config.findIndex((c) => c.id === selectedDiscountCat);
+                    if (catIndex === -1) return null;
+                    const cat = configs.categories_config[catIndex];
+                    return (
+                      <div>
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-[13px] font-medium text-fg">
+                            Desconto mínimo para {cat.emoji} {cat.name}
+                          </p>
+                          <span className="num text-[17px] font-semibold text-primary">
+                            {cat.minDiscount}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={80}
+                          value={cat.minDiscount}
+                          onChange={(e) => {
+                            const updatedVal = Number(e.target.value);
+                            const updatedConfig = configs.categories_config.map((c) =>
+                              c.id === cat.id ? { ...c, minDiscount: updatedVal } : c
+                            );
+                            handleChange("categories_config", updatedConfig);
+                          }}
+                          className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-2 accent-primary"
+                          style={{
+                            background: `linear-gradient(90deg, var(--color-primary) ${
+                              ((cat.minDiscount - 10) / 70) * 100
+                            }%, var(--color-line) ${((cat.minDiscount - 10) / 70) * 100}%)`,
+                          }}
+                        />
+                        <p className="mt-2 text-[11.5px] text-fg-subtle">
+                          Ofertas da categoria {cat.name} abaixo desse patamar são descartadas.
+                        </p>
+                      </div>
+                    );
+                  })()
+                )}
               </CardBody>
             </Card>
           )}
 
           {/* Categorias e nichos */}
           {active === "categorias" && (
-            <Card>
-              <CardHeader
-                title="Categorias e nichos de mineração"
-                subtitle="Filtros e desconto mínimo específico de cada nicho"
-              />
-              <CardBody className="space-y-5">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {configs.categories_config.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center gap-3 rounded border border-line bg-surface-2 px-3.5 py-2.5"
-                    >
-                      <span className="text-[15px]">{c.emoji}</span>
-                      <span className="text-[12.5px] font-medium text-fg">{c.name}</span>
-                      <span className="num ml-auto text-[12px] text-fg-subtle mr-2">
-                        mín. {c.minDiscount}%
-                      </span>
-                      <Switch
-                        checked={c.active}
-                        onChange={(v) => {
-                          const updated = configs.categories_config.map((x) =>
-                            x.id === c.id ? { ...x, active: v } : x
-                          );
-                          handleChange("categories_config", updated);
+            <div className="space-y-4">
+              <Card>
+                <CardHeader
+                  title="Categorias e nichos de mineração"
+                  subtitle="Filtros e desconto mínimo específico de cada nicho"
+                />
+                <CardBody className="space-y-5">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {configs.categories_config.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-3 rounded border border-line bg-surface-2 px-3.5 py-2.5"
+                      >
+                        <span className="text-[15px]">{c.emoji}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12.5px] font-medium text-fg leading-none">{c.name}</p>
+                          <p className="num text-[11px] text-fg-subtle mt-1.5 leading-none">
+                            mín. {c.minDiscount}% · id: {c.id}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={c.active}
+                            onChange={(v) => {
+                              const updated = configs.categories_config.map((x) =>
+                                x.id === c.id ? { ...x, active: v } : x
+                              );
+                              handleChange("categories_config", updated);
+                            }}
+                            label={c.name}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteCategory(c.id)}
+                            className="h-8 w-8 text-fg-subtle hover:text-danger"
+                            title="Excluir categoria"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardHeader
+                  title="Criar nova categoria"
+                  subtitle="Adicione um nicho de mercado personalizado para o motor de varredura"
+                />
+                <CardBody className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    <div className="sm:col-span-2">
+                      <Field label="Nome da categoria" hint="Ex: Dermocosméticos">
+                        <Input
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          placeholder="Ex: Dermocosméticos"
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Emoji representativo" hint="Ex: 🧴, 💄, 💅">
+                        <Input
+                          value={newCatEmoji}
+                          onChange={(e) => setNewCatEmoji(e.target.value)}
+                          placeholder="Emoji"
+                        />
+                      </Field>
+                    </div>
+                    <div>
+                      <Field label="Cor de destaque (Hex)" hint="Preset ou manual">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={newCatColor}
+                            onChange={(e) => setNewCatColor(e.target.value)}
+                            className="h-9 w-9 rounded cursor-pointer border border-line-strong bg-surface-2 p-0"
+                          />
+                          <Input
+                            value={newCatColor}
+                            onChange={(e) => setNewCatColor(e.target.value)}
+                            placeholder="#hex"
+                            className="flex-1"
+                          />
+                        </div>
+                      </Field>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-end">
+                    <div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[12.5px] font-medium text-fg">Desconto mínimo</span>
+                        <span className="num text-[14px] font-semibold text-primary">
+                          {newCatMinDiscount}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={10}
+                        max={80}
+                        value={newCatMinDiscount}
+                        onChange={(e) => setNewCatMinDiscount(Number(e.target.value))}
+                        className="mt-3.5 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-2 accent-primary"
+                        style={{
+                          background: `linear-gradient(90deg, var(--color-primary) ${
+                            ((newCatMinDiscount - 10) / 70) * 100
+                          }%, var(--color-line) ${((newCatMinDiscount - 10) / 70) * 100}%)`,
                         }}
-                        label={c.name}
                       />
                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
+
+                    <div className="text-right">
+                      <Button variant="primary" onClick={handleAddCategory} className="w-full sm:w-auto">
+                        <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                        Adicionar categoria
+                      </Button>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
           )}
 
           {/* IA */}
