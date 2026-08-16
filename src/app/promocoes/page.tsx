@@ -41,7 +41,7 @@ export default function PromocoesPage() {
       d.foundAt
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...csvRows.map(e => e.join(","))].join("\r\n");
+    const csvContent = "\uFEFF" + [headers.join(","), ...csvRows.map((e: any) => e.join(","))].join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

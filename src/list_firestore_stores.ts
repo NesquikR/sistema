@@ -9,7 +9,7 @@ async function main() {
   const snapshot = await firestore.collection("stores").get();
   console.log(`Documentos encontrados na coleção 'stores': ${snapshot.size}`);
   
-  snapshot.docs.forEach((doc) => {
+  snapshot.docs.forEach((doc: any) => {
     console.log(`ID: ${doc.id}`);
     console.log("Dados:", JSON.stringify(doc.data(), null, 2));
     console.log("-----------------------------------------");

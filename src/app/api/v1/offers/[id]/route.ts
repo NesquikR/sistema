@@ -21,7 +21,7 @@ const patchBodySchema = z.object({
 export const PATCH = withApiHandler<Params>(
   async (request: NextRequest, context: RouteContext<Params>) => {
     await bootstrap("web");
-    const { id } = context.params;
+    const { id } = await context.params;
     const body = await parseBody(request, patchBodySchema);
 
     // 1. Buscar a oferta no banco para validar
@@ -30,7 +30,7 @@ export const PATCH = withApiHandler<Params>(
       throw new Error(`Oferta ${id} não encontrada`);
     }
 
-    let updatedOffer = offer;
+    let updatedOffer: any = offer;
 
     // 2. Se for reagendamento (ou status agendado com data)
     if (body.scheduledFor) {

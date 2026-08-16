@@ -212,10 +212,10 @@ export default function AgendadasPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] font-medium text-fg">{d.title}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-fg-subtle">
-                        <span>{storeById[d.store]?.name || d.store}</span>
+                        <span>{storeById[d.store as keyof typeof storeById]?.name || d.store}</span>
                         <span className="h-2.5 w-px bg-line-strong" />
                         <span>
-                          {categoryById[d.category]?.emoji || "📦"} {categoryById[d.category]?.name || d.category}
+                          {categoryById[d.category as keyof typeof categoryById]?.emoji || "📦"} {categoryById[d.category as keyof typeof categoryById]?.name || d.category}
                         </span>
                         <span className="h-2.5 w-px bg-line-strong" />
                         <span className="font-mono text-cyan">{d.channel}</span>
